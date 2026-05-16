@@ -1,0 +1,288 @@
+---
+title: Context-Graph Layer (CGL)
+description: Memory-as-node graph with reply/topic/document edges, versioning, change timeline, graph-first retrieval, and decay-based forgetting.
+---
+
+# Context-Graph Layer
+
+The **Context-Graph Layer (CGL)** is an opt-in overlay that turns every
+memory into a first-class graph node and connects it to other memories
+with a small, fixed taxonomy of structural edges. It lives **next to**
+the existing vector store and the entity graph (TCMGM) — it does not
+replace either.
+
+> **Status:** Generally available behind `MemoryConfig.context_graph.enabled`.
+> Default is **off**, so existing pipelines see byte-identical behaviour
+> until the flag is flipped.
+
+## Why a second graph?
+
+The existing entity graph (`outhad_contextkit/memory/graph_memory.py`)
+models *entities* extracted by the LLM (`alice`, `pizza`, …). The
+Context-Graph models *memories themselves*, keyed by the vector-store UUID.
+That gives you:
+
+- **Conversation-aware retrieval** — `REPLY_TO` and `TEMPORAL_NEXT` edges
+  let one hop reach the rest of the same run/session.
+- **Topic clustering without re-embedding** — `TOPIC_SIMILAR` edges are
+  built from the embedding already computed for the vector store.
+- **Document re-assembly** — `DOCUMENT_LINK` edges hold chunked documents
+  together so retrieving one chunk pulls in its siblings.
+- **Versioning lineage** — every `update()` adds an `UPDATED_FROM` edge
+  and bumps `MemoryNode.version`.
+- **Auditable change timeline** — every node/edge mutation is appended to
+  a SQLite-backed change log.
+
+## Quick start
+
+```python
+from outhad_contextkit import ContextGraphConfig, Memory
+from outhad_contextkit.configs.base import MemoryConfig
+
+cfg = MemoryConfig()
+cfg.context_graph = ContextGraphConfig(enabled=True, backend="networkx")
+
+m = Memory(config=cfg)
+m.add("I love pizza", user_id="u1", run_id="r1")
+m.add("I'm allergic to peanuts", user_id="u1", run_id="r1")
+m.add("Italian food is my favourite", user_id="u1", run_id="r1")
+
+res = m.search("what should I eat?", user_id="u1", use_context_graph=True)
+for r in res["results"]:
+    print(r["memory"], "score=", r["score"])
+
+for edge in res["subgraph"]:
+    print(edge["type"], edge["src"], "->", edge["dst"], "w=", edge["weight"])
+```
+
+The legacy fusion path is still available — pass
+`use_context_graph=False` (or leave the flag off) to fall back.
+
+## Backends
+
+| Backend | When to use | Notes |
+|---|---|---|
+| `networkx` *(default)* | Single-process apps, dev, < ~100k memories | Pure Python, persisted via `pickle` snapshot at `context_graph.persist_path`. Full feature set. |
+| `neo4j` | Multi-process or > 100k memories, already running Neo4j | Reuses the existing `MemoryGraph.graph` driver — no second connection. Requires `enable_graph=True`. Full feature set. |
+
+Both backends implement the complete ABC: node/edge CRUD, BFS neighbours, `iter_nodes`, `edges_for_node`, embedding sidecar (`set_embedding` / `get_embedding` / `iter_embeddings`), stats, and snapshot/load. Embeddings on Neo4j are stored as a JSON-array node property (`n.embedding_json`) — compatible with all Neo4j versions without a vector index.
+
+## Edge taxonomy
+
+| Edge | When it is created | Default weight |
+|---|---|---|
+| `REPLY_TO` | New memory's `run_id` matches the most recent prior memory's `run_id` (within 30 minutes) | `1.0` |
+| `TEMPORAL_NEXT` | Immediate chronological predecessor for the same `user_id` | `0.7` |
+| `TOPIC_SIMILAR` | Cosine similarity ≥ `edges.topic_min_similarity` against existing nodes (top-K, K = `edges.topic_top_k`) | raw cosine |
+| `DOCUMENT_LINK` | Same `metadata["document_id"]` as another node | `1.0` |
+| `UPDATED_FROM` | Created during `update()`; links new version to the previous one | `1.0` |
+| `CAUSAL` | Reserved bridge to TCMGM `add_causal_link` (sticky — exempt from decay) | upstream confidence |
+
+## Graph-first retrieval
+
+When `use_context_graph=True` (or unset, with the flag on), `search()`
+runs a three-step pipeline:
+
+1. **Seed.** Take the top-`seed_top_k` vector hits and any entity-graph
+   matches.
+2. **Expand.** BFS up to `expansion_depth` hops, propagating a `reach`
+   score equal to `seed_score · ∏ edge.weight`. Edges below
+   `edge_weight_floor` are skipped. Archived nodes are skipped unless
+   `search(..., include_archived=True)`.
+3. **Re-rank.** Combine
+   `α · dense + β · lexical + γ · reach`, scaled by
+   `MemoryNode.relevance`. Defaults: `α=0.55, β=0.15, γ=0.30`.
+
+The return shape is the legacy
+`{"results": [...], "relations": [...]}` plus an additional optional
+`"subgraph"` key listing the edges traversed during expansion. Old
+callers that ignore `subgraph` are unaffected.
+
+## Decay & forgetting
+
+Edges age out exponentially:
+
+```
+new_weight = max(min_edge_weight, old_weight · exp(-λ · Δt_hours))
+λ          = ln(2) / (half_life_days · 24)
+```
+
+When `new_weight ≤ min_edge_weight` the edge is pruned and an
+`edge_pruned` event is appended to the change log.
+
+Node relevance is recomputed each tick:
+
+```
+relevance = 0.8 · max(live_edge_weights) + 0.2 · exp(-λ · hours_since_last_access)
+```
+
+Nodes whose relevance drops below `min_node_relevance` *and* whose live
+edges have all been pruned are **soft-archived** (`MemoryNode.archived =
+True`). Archived nodes stay queryable via `Memory.get(memory_id)` — only
+hard `Memory.delete(memory_id)` removes the row. `CAUSAL` edges are
+sticky: they are exempt from decay so causal lineage is never lost.
+
+Trigger points:
+
+- **Lazy** — when `decay.tick_on_read=True` (default), `Memory.search()`
+  calls `maybe_tick_decay()`, which fires at most once per hour.
+- **Eager** — `Memory.tick_decay()` / `await AsyncMemory.tick_decay()`
+  for cron-style invocation.
+
+## Change timeline
+
+Every mutation (node added/updated/archived, edge added/decayed/pruned)
+is appended to `context_graph_changes` (its own SQLite file under
+`{outhad_contextkit_dir}/context_graph_changes.db`). The schema is
+idempotent (`CREATE TABLE IF NOT EXISTS`) so it never collides with the
+existing history database.
+
+```sql
+CREATE TABLE IF NOT EXISTS context_graph_changes (
+    id            TEXT PRIMARY KEY,
+    event_type    TEXT NOT NULL,
+    target_id     TEXT NOT NULL,
+    occurred_at   DATETIME NOT NULL,
+    user_id       TEXT,
+    payload_json  TEXT
+);
+```
+
+## Configuration reference
+
+```python
+from outhad_contextkit.memory.context_graph.config import (
+    ContextGraphConfig,
+    DecayConfig,
+    EdgeSynthesisConfig,
+    RetrievalConfig,
+)
+
+cfg = ContextGraphConfig(
+    enabled=True,
+    backend="networkx",                     # or "neo4j"
+    persist_path="~/.outhad_contextkit/context_graph.pkl",
+    log_changes=True,
+    decay=DecayConfig(
+        enabled=True,
+        half_life_days=30.0,
+        min_edge_weight=0.05,
+        min_node_relevance=0.02,
+        tick_on_read=True,
+    ),
+    edges=EdgeSynthesisConfig(
+        enable_reply_to=True,
+        enable_topic_similar=True,
+        enable_document_link=True,
+        enable_temporal_next=True,
+        topic_top_k=5,
+        topic_min_similarity=0.75,
+        use_llm_inference=False,
+    ),
+    retrieval=RetrievalConfig(
+        enabled=True,
+        seed_top_k=10,
+        expansion_depth=2,
+        max_candidates=50,
+        edge_weight_floor=0.1,
+    ),
+)
+```
+
+## Compatibility
+
+| Combo | Behaviour |
+|---|---|
+| `context_graph.enabled=False` *(default)* | Byte-identical to pre-feature main branch |
+| `enabled=True, backend=networkx` | Full CGL feature set — in-process, no extra infra |
+| `enabled=True, backend=neo4j, graph_store=neo4j` | Full CGL feature set — reuses existing driver, no extra connection |
+| `enabled=True, backend=neo4j, graph_store=None` | `ValueError` at init with a clear message |
+| `enabled=True, tcmgm enabled` | Both run; CGL stores `CAUSAL` edges when TCMGM `add_causal_link` fires |
+| `enabled=True, backend=networkx` + `backfill_context_graph()` | Full backfill: nodes + all edge types including `TOPIC_SIMILAR` |
+| `enabled=True, backend=neo4j` + `backfill_context_graph()` | Full backfill: nodes + all edge types including `TOPIC_SIMILAR` |
+
+## Migration — backfilling existing memories
+
+If you enable CGL **after** you already have memories in the vector store,
+call `Memory.backfill_context_graph()` once to populate the graph from
+historical data. The call is **idempotent** — running it twice produces
+the same result.
+
+```python
+from outhad_contextkit import ContextGraphConfig, Memory
+from outhad_contextkit.configs.base import MemoryConfig
+
+cfg = MemoryConfig()
+cfg.context_graph = ContextGraphConfig(enabled=True, backend="networkx")
+m = Memory(config=cfg)
+
+# Backfill all memories for a specific user.
+stats = m.backfill_context_graph(
+    user_id="alice",    # scope to one user; omit to backfill everything
+    batch_size=500,     # memories processed per embedding batch
+    embed=True,         # re-compute embeddings for TOPIC_SIMILAR edges
+)
+print(stats)  # {"nodes": 312, "edges": 847}
+```
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `batch_size` | `int` | `500` | Memories processed per embedding batch — useful for rate-limiting the embedding provider. |
+| `embed` | `bool` | `True` | Re-compute embeddings so `TOPIC_SIMILAR` edges can be synthesised. Set to `False` for a fast structural-only pass (nodes + `REPLY_TO` / `TEMPORAL_NEXT` / `DOCUMENT_LINK` only). |
+| `user_id` | `str \| None` | `None` | Scope backfill to memories for one user. |
+| `agent_id` | `str \| None` | `None` | Scope backfill to memories for one agent. |
+| `run_id` | `str \| None` | `None` | Scope backfill to one run. |
+
+### Return value
+
+```python
+{"nodes": int, "edges": int}
+# nodes — number of nodes upserted (equals memories processed)
+# edges — net new edges created during the backfill
+```
+
+### Error handling
+
+`RuntimeError` is raised if `MemoryConfig.context_graph.enabled` is
+`False`. The backfill is otherwise fail-soft: individual embedding errors
+are logged at DEBUG level and skipped rather than aborting the run.
+
+### Async
+
+```python
+stats = await async_memory.backfill_context_graph(user_id="alice")
+```
+
+### Offline / structural-only
+
+```python
+# Fast pass: nodes + REPLY_TO / TEMPORAL_NEXT / DOCUMENT_LINK edges only.
+# No embedding calls. Useful when you want the graph structure without
+# paying embedding costs for existing memories.
+stats = m.backfill_context_graph(embed=False)
+```
+
+### Off-ramp
+
+Setting `context_graph.enabled = False` at any point disables all CGL
+code paths. Historical data in `context_graph_changes.db` is preserved
+until you call `Memory.reset_context_graph()`.
+
+## Examples
+
+- [examples/context_graph/basic_usage.py](../../examples/context_graph/basic_usage.py)
+- [examples/context_graph/decay_and_forget.py](../../examples/context_graph/decay_and_forget.py)
+- [examples/context_graph/backfill.py](../../examples/context_graph/backfill.py)
+
+## Tests
+
+`tests/context_graph/` ships unit tests for config defaults, types,
+NetworkX backend, builder + edge synthesis, change log, retriever
+(graph-first re-ranking + archival behaviour), facade decay/pruning,
+property tests for backend invariants and decay monotonicity, and
+backfill idempotency + filter scoping. Neo4j backend tests are gated
+by `pytest.mark.integration` and only run when `NEO4J_URL` is set.
+
+**58 tests, all passing.**

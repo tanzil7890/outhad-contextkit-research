@@ -1,4 +1,4 @@
-"""Phase 9 — property tests (Hypothesis) for the Context-Graph Layer.
+""" property tests (Hypothesis) for the Context-Graph Layer.
 
 Two invariants the layer must preserve under arbitrary operation orderings:
 

@@ -1,4 +1,4 @@
-"""Phase A3 — Event de-duplication.
+""" Event de-duplication.
 
 Conversational data frequently re-states the same fact across turns
 (echo questions, paraphrased confirmations, retries). Without dedup

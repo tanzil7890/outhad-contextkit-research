@@ -1,4 +1,4 @@
-"""Phase P10 — verify heavyweight modules don't load at package import.
+"""verify heavyweight modules don't load at package import.
 
 `import outhad_contextkit.memory.temporal` itself must NOT pull in
 `transformers` or `torch`. Symbols resolve through `__getattr__` so

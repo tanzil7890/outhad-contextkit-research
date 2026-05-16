@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 class CLIPTextEmbedder(BaseTextEmbedder):
     """Text embedder using a CLIP / SigLIP text encoder.
 
-    Phase A7 — ``model_name`` kwarg lets callers pick a larger or
+     ``model_name`` kwarg lets callers pick a larger or
     better-aligned backbone (e.g. ``openai/clip-vit-large-patch14`` or
     ``google/siglip-base-patch16-224``) without code changes. The
     backbone loader is shared with ``CLIPImageEmbedder`` via the
@@ -32,7 +32,7 @@ class CLIPTextEmbedder(BaseTextEmbedder):
         self._init_clip()
 
     def _init_clip(self):
-        """Load CLIP model (Phase P2 — shared module-level cache)."""
+        """Load CLIP model (shared module-level cache)."""
         try:
             import torch
 

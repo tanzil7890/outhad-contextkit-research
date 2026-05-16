@@ -1,4 +1,4 @@
-"""Phase 10 — backfill_context_graph tests.
+"""backfill_context_graph tests.
 
 Verifies:
 1. Nodes get created for every memory in the mock vector store.

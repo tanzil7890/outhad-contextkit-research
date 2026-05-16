@@ -1,4 +1,4 @@
-"""Phase A2 (JSON-schema causal prompt) + A3 (event dedup) +
+""" (JSON-schema causal prompt) + A3 (event dedup) +
 A5 (timeline + semantic rerank) tests.
 
 A2 — confidence threshold + few-shot prompt:

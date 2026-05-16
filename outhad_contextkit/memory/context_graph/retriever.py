@@ -1,4 +1,4 @@
-"""Phase 6 — Graph-first retrieval over the Context-Graph Layer.
+""" Graph-first retrieval over the Context-Graph Layer.
 
 Pipeline:
 
@@ -130,7 +130,7 @@ def _rerank_candidates(
     The only network-like action is ``payload_resolver`` for candidates
     that weren't part of the seed set.
 
-    ``tenant_id`` / ``sub_tenant_id`` (Phase T5) are optional hard-skip
+    ``tenant_id`` / ``sub_tenant_id`` are optional hard-skip
     filters. When supplied, candidates whose backing CGL node carries a
     *different* non-NULL tenant tag are excluded — defence in depth on
     top of the storage-level isolation that mode='collection' provides.
@@ -147,7 +147,7 @@ def _rerank_candidates(
         payload = seed_lookup.get(cid) or resolved_payloads.get(cid)
         if payload is None:
             payload = {"id": cid, "memory": "", "score": 0.0}
-        # Phase T5 — hard tenant/sub-tenant skip. We resolve the backing
+        #  hard tenant/sub-tenant skip. We resolve the backing
         # node lazily so the filter touches the backend at most once per
         # candidate (matches the existing relevance read pattern below).
         if tenant_id is not None or sub_tenant_id is not None:
@@ -183,7 +183,7 @@ def _rerank_candidates(
             )
         )
 
-    # Phase F2 — single peak read up-front keeps the rerank loop O(1) in
+    #  single peak read up-front keeps the rerank loop O(1) in
     # backend calls per candidate. Cached peak is safe: it would only shift
     # frequency scores by a constant rescale mid-query, which does not
     # change the ranking order within a single search.
@@ -191,13 +191,13 @@ def _rerank_candidates(
         cached_frequency_peak(cg) if cfg.epsilon_frequency > 0 else 0
     )
     frequency_contributions: Dict[str, float] = {}
-    # Phase F4 — δ·personal term. The provider caches per-memory boosts
+    #  δ·personal term. The provider caches per-memory boosts
     # internally so re-ranking stays O(N) in SQLite reads (one per id).
     personal_contributions: Dict[str, float] = {}
     personal_enabled = bool(
         personal_boost is not None and cfg.delta_personal > 0
     )
-    # Phase F7 — ζ·success term. Provider caches the per-pair hit-rate so
+    #  ζ·success term. Provider caches the per-pair hit-rate so
     # repeat lookups inside the rerank cost zero SQLite reads.
     success_contributions: Dict[str, float] = {}
     success_enabled = bool(
@@ -300,15 +300,15 @@ class GraphFirstRetriever:
     ) -> Dict[str, Any]:
         """Return a graph-expanded, re-ranked result list + the used subgraph.
 
-        ``personal_boost`` (Phase F4) is an optional ``PersonalBoostProvider``
+        ``personal_boost``  is an optional ``PersonalBoostProvider``
         that supplies a ``[-1, 1]`` per-memory score. Ignored unless the
         caller also sets ``RetrievalConfig.delta_personal > 0``.
 
-        ``success_provider`` (Phase F7) is an optional ``SuccessProvider``
+        ``success_provider``  is an optional ``SuccessProvider``
         that supplies a ``[0, 1]`` per-(query_hash, memory) hit-rate.
         Ignored unless the caller also sets ``RetrievalConfig.zeta_success > 0``.
 
-        ``tenant_id`` / ``sub_tenant_id`` (Phase T5) hard-skip candidates
+        ``tenant_id`` / ``sub_tenant_id`` hard-skip candidates
         whose backing CGL node carries a different non-NULL tenant tag.
         Defence in depth on top of mode='collection' storage isolation.
         """

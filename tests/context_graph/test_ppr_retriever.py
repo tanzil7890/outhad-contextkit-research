@@ -1,10 +1,10 @@
-"""Phase D — Personalised PageRank retriever tests.
+""" Personalised PageRank retriever tests.
 
 Covers:
-* default algorithm=bfs is byte-identical to the pre-Phase-D retriever,
+* default algorithm=bfs is byte-identical to the retriever,
 * algorithm=ppr produces deterministic, consistent rankings,
 * on a tree-graph PPR ranks descendants in depth order (sanity),
-* pinned relevance (Phase A) still modulates the final score,
+* pinned relevance  still modulates the final score,
 * PPR respects ``edge_weight_floor`` and ``include_archived``,
 * empty seeds return an empty result set.
 """
@@ -226,7 +226,7 @@ def test_ppr_empty_seeds_returns_empty():
 
 
 def test_bfs_retriever_unchanged_after_refactor():
-    """Phase D refactor must not alter BFS behaviour."""
+    """refactor must not alter BFS behaviour."""
     cfg = _cfg(
         algorithm="bfs",
         seed_top_k=1,

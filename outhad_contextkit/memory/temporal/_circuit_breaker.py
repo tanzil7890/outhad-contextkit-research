@@ -1,4 +1,4 @@
-"""Phase C4 — provider circuit breaker.
+"""provider circuit breaker.
 
 External providers (LLM, Whisper, embedding APIs) fail in bursts: an
 upstream incident, a quota cap, a regional brown-out. Naive retry

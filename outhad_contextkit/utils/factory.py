@@ -91,7 +91,7 @@ class VectorStoreFactory:
         "langchain": "outhad_contextkit.vector_stores.langchain.Langchain",
     }
 
-    # Phase T3 — per-provider collection-name field override map. Most
+    #  per-provider collection-name field override map. Most
     # providers expose a ``collection_name`` field (verified across all
     # configs/vector_stores/*.py); the few that diverge (Baidu uses
     # ``table_name``) are handled here so the factory caller does not

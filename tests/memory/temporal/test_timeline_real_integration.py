@@ -1,4 +1,4 @@
-"""Real-world integration test for Phase 4: Timeline Helper with Neo4j and OpenAI."""
+"""Real-world integration test for  Timeline Helper with Neo4j and OpenAI."""
 import logging
 import os
 from datetime import datetime, timedelta
@@ -35,7 +35,7 @@ def check_environment():
 def test_timeline_with_real_neo4j_and_openai():
     """Test timeline functionality with real Neo4j and OpenAI."""
     logger.info("\n" + "="*80)
-    logger.info("PHASE 4 REAL INTEGRATION TEST")
+    logger.info(" REAL INTEGRATION TEST")
     logger.info("Testing with Real Neo4j + OpenAI (No Mocks)")
     logger.info("="*80)
     
@@ -51,7 +51,7 @@ def test_timeline_with_real_neo4j_and_openai():
         from outhad_contextkit.graphs.configs import Neo4jConfig, GraphStoreConfig
         
         config = MemoryConfig(
-            custom_storage_path="test_phase4_timeline.db",
+            custom_storage_path="test_timeline.db",
             graph_store=GraphStoreConfig(
                 provider="neo4j",
                 config=Neo4jConfig(
@@ -80,7 +80,7 @@ def test_timeline_with_real_neo4j_and_openai():
         
         # 3. Test: Build timeline from transcript
         logger.info("\n3. Testing: Build timeline from real transcript...")
-        test_user = f"test_user_phase4_{datetime.utcnow().timestamp()}"
+        test_user = f"test_user_{datetime.utcnow().timestamp()}"
         
         transcript = """
         User: Good morning! I just woke up and had breakfast.
@@ -229,7 +229,7 @@ def test_timeline_with_real_neo4j_and_openai():
         logger.info(f"  ✅ Timeline queries: All 11 query methods working")
         logger.info(f"  ✅ Timeline summarization: Working (OpenAI)")
         logger.info(f"  ✅ Timeline statistics: Working")
-        logger.info("\n✅ Phase 4: Timeline Helper FULLY VALIDATED with Real Systems!")
+        logger.info("\n✅  Timeline Helper FULLY VALIDATED with Real Systems!")
         logger.info("="*80 + "\n")
         
         return True
@@ -255,7 +255,7 @@ def test_what_happened_queries():
         from outhad_contextkit.graphs.configs import Neo4jConfig, GraphStoreConfig
         
         config = MemoryConfig(
-            custom_storage_path="test_phase4_timeline.db",
+            custom_storage_path="test_timeline.db",
             graph_store=GraphStoreConfig(
                 provider="neo4j",
                 config=Neo4jConfig(
@@ -334,7 +334,7 @@ def test_what_happened_queries():
 def main():
     """Run all real integration tests."""
     logger.info("\n" + "="*80)
-    logger.info("PHASE 4: TIMELINE HELPER - REAL INTEGRATION TESTS")
+    logger.info(" TIMELINE HELPER - REAL INTEGRATION TESTS")
     logger.info("Testing with Real Neo4j + OpenAI (No Mocks)")
     logger.info("="*80)
     
@@ -348,7 +348,7 @@ def main():
         logger.info("\n" + "="*80)
         logger.info("🎉 ALL REAL INTEGRATION TESTS PASSED! 🎉")
         logger.info("="*80)
-        logger.info("\n✅ Phase 4: Timeline Helper FULLY VALIDATED")
+        logger.info("\n✅  Timeline Helper FULLY VALIDATED")
         logger.info("✅ All 11 previously skipped tests now verified with real systems")
         logger.info("✅ No mocks - Real Neo4j + Real OpenAI API")
         logger.info("\nValidated Features:")

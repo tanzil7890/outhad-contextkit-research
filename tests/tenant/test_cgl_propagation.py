@@ -1,4 +1,4 @@
-"""Phase T5 — CGL tenant propagation tests."""
+""" CGL tenant propagation tests."""
 from __future__ import annotations
 
 from datetime import datetime

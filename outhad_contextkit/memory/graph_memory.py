@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 class MemoryGraph:
     def __init__(self, config):
         self.config = config
-        # Phase PT1 — pass through pool tuning when callers set it on
+        # pass through pool tuning when callers set it on
         # Neo4jConfig. ``driver_config`` is forwarded verbatim to the
         # underlying ``neo4j.GraphDatabase.driver(...)`` so each kwarg
         # below is the official driver kwarg name.
@@ -86,7 +86,7 @@ class MemoryGraph:
     def _create_temporal_schema(self):
         """Create temporal indexes and constraints for TCMGM support.
 
-        Phase PT5 — every TCMGM query path that filters by timestamp,
+         every TCMGM query path that filters by timestamp,
         causal_type, or (user_id, timestamp) is index-backed. Statements
         are ``CREATE INDEX ... IF NOT EXISTS`` so repeat boots are no-ops.
         Each is wrapped in its own try/except — a backend that does not
@@ -746,7 +746,7 @@ class MemoryGraph:
 
     def add_causal_link(self, causal_link, filters: dict):
         """
-        Add a causal relationship to the graph (TCMGM Phase 2).
+        Add a causal relationship to the graph.
         
         Args:
             causal_link: CausalLink object or dict with cause_id, effect_id, causal_type, confidence, evidence, timestamp
@@ -809,7 +809,7 @@ class MemoryGraph:
             return None
 
     def add_causal_links_batch(self, causal_links, filters: dict):
-        """Phase PT2 — bulk-insert N causal links in one Cypher round-trip.
+        """bulk-insert N causal links in one Cypher round-trip.
 
         The legacy ``add_causal_link`` issues one MERGE per link
         (= N network round-trips). Causal extraction commonly yields
@@ -901,7 +901,7 @@ class MemoryGraph:
         metadata=None
     ):
         """
-        Add multimodal event to graph (TCMGM Phase 3).
+        Add multimodal event to graph.
         
         Supports text, image, audio, and other modalities with cross-modal linking.
         
@@ -990,7 +990,7 @@ class MemoryGraph:
         modality_filter: str = None
     ):
         """
-        Search across modalities (TCMGM Phase 3).
+        Search across modalities.
         
         Find events across different modalities using semantic similarity.
         For example: search for images using text queries.

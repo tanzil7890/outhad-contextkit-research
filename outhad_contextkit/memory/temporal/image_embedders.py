@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class CLIPImageEmbedder(BaseImageEmbedder):
     """Image embedder using a CLIP / SigLIP image encoder.
 
-    Phase A7 — ``model_name`` kwarg lets callers pick a larger or
+     ``model_name`` kwarg lets callers pick a larger or
     better-aligned backbone (e.g. ``openai/clip-vit-large-patch14`` or
     ``google/siglip-base-patch16-224``).
     """
@@ -35,7 +35,7 @@ class CLIPImageEmbedder(BaseImageEmbedder):
         self._init_clip()
 
     def _init_clip(self):
-        """Load CLIP model (Phase P2 — shared module-level cache)."""
+        """Load CLIP model (shared module-level cache)."""
         try:
             import torch
 

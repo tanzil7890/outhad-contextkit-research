@@ -1,4 +1,4 @@
-"""Phase D7 — cold archival storage adapters.
+"""cold archival storage adapters.
 
 When a memory's ``decay_score`` stays below ``archive_threshold`` for
 longer than ``archive_grace_seconds``, the scheduler can demote it to

@@ -1,4 +1,4 @@
-"""Phase 2 — ``MemoryNode`` / ``MemoryEdge`` / ``ChangeEvent`` dataclass shape."""
+""" ``MemoryNode`` / ``MemoryEdge`` / ``ChangeEvent`` dataclass shape."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta

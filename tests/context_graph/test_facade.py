@@ -1,4 +1,4 @@
-"""Phase 3 — ``ContextGraph`` facade: decay, stats, persistence."""
+""" ``ContextGraph`` facade: decay, stats, persistence."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta

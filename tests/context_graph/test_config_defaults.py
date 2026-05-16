@@ -1,4 +1,4 @@
-"""Phase 1 — Configuration defaults and opt-in semantics.
+""" Configuration defaults and opt-in semantics.
 
 These tests guarantee that enabling the Context-Graph Layer is always an
 explicit choice. The feature must remain dormant (byte-identical behaviour)

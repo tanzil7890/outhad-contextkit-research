@@ -6,7 +6,7 @@ table ``context_graph_changes``. The table schema is deliberately additive
 (``IF NOT EXISTS``) so enabling the CGL on an existing database never triggers
 migrations or rewrites.
 
-Phase E — Streaming change bus
+ Streaming change bus
 --------------------------------
 :meth:`subscribe` registers an in-proc callback and returns a token.
 After each :meth:`append` the event is fanned out to every registered
@@ -310,7 +310,7 @@ class ContextChangeLog:
                 self._enqueue(sub, ev)
 
     # ------------------------------------------------------------------
-    #  Read helpers (unchanged from pre-Phase-E)
+    #  Read helpers
     # ------------------------------------------------------------------
     def all_events(
         self,

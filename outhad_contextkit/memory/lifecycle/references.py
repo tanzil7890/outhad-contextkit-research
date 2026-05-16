@@ -1,4 +1,4 @@
-"""Phase D6 — reference-based decay refresh.
+"""reference-based decay refresh.
 
 Distinguishes "this memory was retrieved" (which already happens in
 ``Memory.search`` and bumps ``access_count`` on the returned top-K)

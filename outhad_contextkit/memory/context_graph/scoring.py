@@ -1,7 +1,7 @@
 """Scoring helpers shared by the Context-Graph retrievers.
 
 Pure functions only — no IO, no state. Isolating these lets the retriever
-layers stay small and lets Phase F2+ plug new signals into the final
+layers stay small and lets plug new signals into the final
 rerank formula without rewriting :mod:`retriever`.
 """
 from __future__ import annotations

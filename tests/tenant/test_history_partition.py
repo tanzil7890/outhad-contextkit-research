@@ -1,4 +1,4 @@
-"""Phase T4 — history-store tenant partitioning tests."""
+"""— history-store tenant partitioning tests."""
 from __future__ import annotations
 
 import sqlite3

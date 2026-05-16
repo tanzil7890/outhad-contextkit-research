@@ -62,7 +62,7 @@ class ContextGraphBackend(ABC):
         """Return every edge incident to ``node_id`` (in either direction)."""
         return iter(())
 
-    # ---- frequency tracking (Phase F2) --------------------------------
+    # ---- frequency tracking  --------------------------------
     def bump_access_count(
         self,
         node_id: str,
@@ -105,7 +105,7 @@ class ContextGraphBackend(ABC):
             return peak
         return peak
 
-    # ---- importance scoring (Phase A extension) -----------------------
+    # ---- importance scoring (extension) -----------------------
     def bump_relevance(
         self,
         node_id: str,
@@ -151,7 +151,7 @@ class ContextGraphBackend(ABC):
     @abstractmethod
     def load(self, path: str) -> None: ...
 
-    # ---- portable JSON-Lines export / import (Phase B) -----------------
+    # ---- portable JSON-Lines export / import  -----------------
     #
     # These are non-abstract, backend-agnostic helpers built on
     # :meth:`iter_nodes` / :meth:`all_edges` / :meth:`iter_embeddings`.

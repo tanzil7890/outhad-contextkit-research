@@ -1,4 +1,4 @@
-"""Phase C — Per-user LLM token / call budget for edge synthesis.
+""" Per-user LLM token / call budget for edge synthesis.
 
 Keeps the CGL's LLM spend bounded without requiring external infra.
 An in-memory map tracks tokens spent per ``(user_id, utc_date)`` and an

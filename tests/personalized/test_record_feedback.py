@@ -1,4 +1,4 @@
-"""Phase F3 — ``Memory.record_feedback`` integration (no vector store).
+""" ``Memory.record_feedback`` integration (no vector store).
 
 Builds a minimal Memory shell (no LLM / vector store / embedder) by
 constructing only the CGL + MSPR attributes the method touches, then

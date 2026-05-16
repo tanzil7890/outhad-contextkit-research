@@ -1,4 +1,4 @@
-"""Phase P8 (cross-modal prefilter) + A4 (calibrated thresholds) +
+"""(cross-modal prefilter) + A4 (calibrated thresholds) +
 A6 (cross-encoder reranker) tests.
 
 P8 — prefilter:

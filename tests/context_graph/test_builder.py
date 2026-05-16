@@ -1,4 +1,4 @@
-"""Phase 3/4 — IncrementalGraphBuilder node + edge synthesis contract."""
+"""IncrementalGraphBuilder node + edge synthesis contract."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta

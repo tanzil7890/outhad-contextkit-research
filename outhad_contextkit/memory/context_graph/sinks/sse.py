@@ -1,4 +1,4 @@
-"""Phase E — Server-Sent Events (SSE) sink.
+""" Server-Sent Events (SSE) sink.
 
 Produces an async generator of SSE-formatted text lines suitable for use
 with FastAPI / Starlette ``StreamingResponse``::

@@ -3,7 +3,7 @@
 Every mutation performed by :class:`ContextGraph` is appended to
 :class:`ContextChangeLog`. Given the complete, ordered event stream, we
 can rebuild an equivalent backend from scratch — which is exactly what
-Phase B snapshots rely on for point-in-time recovery and audit diffing.
+snapshots rely on for point-in-time recovery and audit diffing.
 
 The module is intentionally pure: no network IO, no external services,
 no knowledge of ``Memory``. It only needs a changelog and a backend.

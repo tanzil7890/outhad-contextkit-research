@@ -1,4 +1,4 @@
-"""Phase A — importance scoring from user feedback.
+""" importance scoring from user feedback.
 
 Covers :meth:`Memory.mark_relevant` / :meth:`mark_irrelevant`, the
 ``bump_relevance`` primitive on the backend ABC, and the sticky

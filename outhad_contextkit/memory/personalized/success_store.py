@@ -1,4 +1,4 @@
-"""Phase F7 — Historical (query, memory) success store.
+""" Historical (query, memory) success store.
 
 When a user verdict arrives via ``record_feedback``, we already log the
 event to ``feedback_events.db``. F7 adds a second narrow table that maps

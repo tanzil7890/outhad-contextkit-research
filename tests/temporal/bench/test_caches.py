@@ -1,4 +1,4 @@
-"""Phase P2/P3/P6 — cache correctness tests.
+"""cache correctness tests.
 
 Each cache must:
 - Hit on second identical call (no second backend call).

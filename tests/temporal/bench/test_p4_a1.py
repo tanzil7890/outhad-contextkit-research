@@ -1,4 +1,4 @@
-"""Phase P4 (Cypher UNWIND) + A1 (Reciprocal Rank Fusion) tests.
+"""(Cypher UNWIND) + A1 (Reciprocal Rank Fusion) tests.
 
 P4 — get_causal_chains_batch must:
 - Issue exactly 2 graph.query calls regardless of seed count.

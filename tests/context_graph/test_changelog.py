@@ -1,4 +1,4 @@
-"""Phase 3/5 — SQLite change timeline writer/reader contract."""
+"""SQLite change timeline writer/reader contract."""
 from __future__ import annotations
 
 from datetime import datetime

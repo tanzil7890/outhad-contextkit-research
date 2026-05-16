@@ -1,4 +1,4 @@
-"""Phase A7 — opt-in larger CLIP / SigLIP backbone.
+""" opt-in larger CLIP / SigLIP backbone.
 
 These tests verify the *plumbing* (model_name flows through factory →
 embedder → ``_clip_cache.get_clip``) and the *backbone detection* (CLIP

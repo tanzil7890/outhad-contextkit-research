@@ -1,4 +1,4 @@
-"""Phase F6 — Role-aware retrieval policy hooks.
+""" Role-aware retrieval policy hooks.
 
 A ``RolePolicy`` is a pluggable callable that decides whether a memory may
 be returned to a given ``RoleContext``, and optionally re-weights the

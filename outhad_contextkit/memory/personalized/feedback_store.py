@@ -1,4 +1,4 @@
-"""Persistent feedback store — Phase F3.
+"""Persistent feedback store — .
 
 Append-only SQLite table of every ``record_feedback`` call. The store is
 deliberately narrow: it has one write path (``append``) and a small set

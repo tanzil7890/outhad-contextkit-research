@@ -1,4 +1,4 @@
-"""Phase D4 — opt-in immutable versioning.
+"""opt-in immutable versioning.
 
 When ``decay_v2.versioning.mode='immutable'``, every ``Memory.update``
 becomes an append: a new vector-store row is written with a fresh id;

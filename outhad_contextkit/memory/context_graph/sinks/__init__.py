@@ -1,4 +1,4 @@
-"""Phase E — Pluggable sink adapters for the CGL streaming change bus.
+""" Pluggable sink adapters for the CGL streaming change bus.
 
 Every sink implements :class:`ChangeSink`. The CGL uses the sink ABC only;
 concrete adapters are imported lazily so missing optional deps never crash on import.

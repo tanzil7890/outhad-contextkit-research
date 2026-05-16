@@ -1,4 +1,4 @@
-"""Tests for chunking retrieval enhancements (Phase 4)."""
+"""Tests for chunking retrieval enhancements ()."""
 
 import pytest
 from outhad_contextkit import Memory

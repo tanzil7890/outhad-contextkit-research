@@ -1,4 +1,4 @@
-"""Phase C — LLM-driven semantic edge synthesis tests (mock LLM only).
+""" LLM-driven semantic edge synthesis tests (mock LLM only).
 
 Covers:
 * each label (SUPPORTS / CONTRADICTS / REFINES / ELABORATES) → real edge,

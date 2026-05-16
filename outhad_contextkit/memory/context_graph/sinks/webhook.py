@@ -1,4 +1,4 @@
-"""Phase E — HMAC-signed webhook sink.
+""" HMAC-signed webhook sink.
 
 Posts each :class:`ChangeEvent` to a URL as JSON with an HMAC-SHA-256
 signature so consumers can verify authenticity and guard against replay.

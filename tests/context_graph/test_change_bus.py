@@ -1,4 +1,4 @@
-"""Phase E — Streaming change-bus tests.
+""" Streaming change-bus tests.
 
 Covers:
 * in-proc subscriber receives all events from 1000-insert run, zero loss

@@ -10,7 +10,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-# Phase A4 — calibrated per-(query_modality, candidate_modality)
+#  calibrated per-(query_modality, candidate_modality)
 # similarity thresholds. CLIP image↔text cosines centre around 0.20–
 # 0.30, while text↔text in the same model space centre around 0.50+.
 # A single global threshold (0.0 today) admits noise on text↔text and
@@ -67,8 +67,8 @@ def cross_modal_search(
     """
     Search across modalities using embedding similarity.
 
-    Phase P8 + A4 additions:
-    * **prefilter** (P8): when ``time_window`` is supplied, candidates
+    
+    * **prefilter** : when ``time_window`` is supplied, candidates
       outside the window are skipped *before* the cosine loop. When
       ``prefilter_max_candidates`` is set, the candidate list is capped
       after modality + time filters but before similarity scoring.
@@ -112,7 +112,7 @@ def cross_modal_search(
         logger.warning("Query embedding has zero norm")
         return []
 
-    # Phase P8 — prefilter (modality + time + budget cap).
+    #  prefilter (modality + time + budget cap).
     pool: List[Dict] = []
     initial = len(candidate_embeddings)
     for candidate in candidate_embeddings:
@@ -152,7 +152,7 @@ def cross_modal_search(
             / (np.linalg.norm(query_vec) * candidate_norm)
         )
 
-        # Phase A4 — calibrated per-pair threshold.
+        #  calibrated per-pair threshold.
         threshold = min_similarity
         if use_calibrated_thresholds:
             threshold = _threshold_for(

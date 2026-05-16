@@ -13,7 +13,7 @@ from outhad_contextkit.memory.temporal.types import CausalLink
 logger = logging.getLogger(__name__)
 
 
-# Phase C1 — extraction mode selector.
+# extraction mode selector.
 # - "llm":     LLM call on every batch (legacy default; max recall, max cost).
 # - "rules":   keyword + temporal heuristics only (zero LLM cost; ~10-15% recall hit).
 # - "cascade": rules first; LLM fires only when rules return too few links
@@ -28,7 +28,7 @@ CASCADE_MIN_LINKS = 1
 CASCADE_MIN_CONFIDENCE = 0.75
 
 
-# Phase P3 — LRU cache over LLM-extracted causal sequences.
+# LRU cache over LLM-extracted causal sequences.
 # Identical event payloads (deterministic content) skip the
 # 200-500 ms LLM round-trip + dollar cost. Cap chosen to be small
 # so memory stays bounded; eviction is FIFO via OrderedDict.
@@ -59,7 +59,7 @@ def clear_causal_llm_cache() -> int:
         return n
 
 
-# Phase A2 — JSON-schema-constrained prompt + few-shot examples.
+#  JSON-schema-constrained prompt + few-shot examples.
 # Industry standard for causal extraction; drops false-positive rate
 # by ~40% and lifts precision 20-30% on typical conversational data.
 # Output schema is enforced by `response_format={"type": "json_object"}`
@@ -153,7 +153,7 @@ class CausalExtractor:
 
         Args:
             llm: LLM instance (required for "llm" / "cascade" modes).
-            extraction_mode: Phase C1 — pick the dispatch strategy.
+            extraction_mode: pick the dispatch strategy.
                 "llm" (default) keeps legacy behaviour. "rules" runs
                 keyword + temporal heuristics only. "cascade" runs
                 rules first and falls back to the LLM only when rules
@@ -185,11 +185,11 @@ class CausalExtractor:
             use_llm: Legacy kwarg. ``True`` forces ``"llm"`` mode for this call,
                 ``False`` forces ``"rules"``. Prefer ``extraction_mode``.
                 When both are passed, ``extraction_mode`` wins.
-            dedupe: Phase A3 — collapse near-duplicate events before
+            dedupe:  collapse near-duplicate events before
                 extraction so the prompt + cache key don't re-process
                 paraphrased restatements. Default ``True``; pass
                 ``False`` for parity with the pre-A3 path.
-            extraction_mode: Phase C1 — per-call override for the
+            extraction_mode: per-call override for the
                 dispatch strategy ("llm" / "rules" / "cascade"). Falls
                 back to the instance default when None.
 
@@ -229,7 +229,7 @@ class CausalExtractor:
         return self._extract_cascade(events)
 
     def _extract_cascade(self, events: List[Dict]) -> List[CausalLink]:
-        """Phase C1 — rules first; LLM only on weak rule output.
+        """rules first; LLM only on weak rule output.
 
         Rule output is considered strong enough to skip the LLM when
         BOTH thresholds clear (link count + max confidence). Otherwise
@@ -286,7 +286,7 @@ class CausalExtractor:
         """
         Extract causal links using LLM.
 
-        Phase P3 — results cached by SHA-256 of canonical event payload.
+        results cached by SHA-256 of canonical event payload.
         Repeat invocations on identical event sequences skip the
         200-500 ms LLM round-trip + per-call API cost.
 
@@ -329,7 +329,7 @@ class CausalExtractor:
                     response_format={"type": "json_object"},
                 )
             except CircuitOpenError as exc:
-                # Phase C4 — provider is in cooldown; degrade to rules
+                # provider is in cooldown; degrade to rules
                 # without burning another timeout on the open call.
                 logger.warning(
                     "Causal LLM circuit open (%s) — falling back to rules",
@@ -349,7 +349,7 @@ class CausalExtractor:
                     logger.warning(f"Invalid causal type '{causal_type}', defaulting to 'correlates_with'")
                     causal_type = CausalType.CORRELATES_WITH.value
 
-                # Phase A2 — clamp confidence to [0, 1] and drop edges
+                #  clamp confidence to [0, 1] and drop edges
                 # below the minimum threshold to keep the graph clean.
                 try:
                     confidence = float(link_data.get("confidence", 0.7))
@@ -383,7 +383,7 @@ class CausalExtractor:
                 )
 
             logger.info(f"LLM extracted {len(causal_links)} causal links")
-            # Phase P3 — populate cache with the bounded LRU.
+            # populate cache with the bounded LRU.
             with _CAUSAL_LLM_LOCK:
                 _CAUSAL_LLM_CACHE[cache_key] = list(causal_links)
                 _CAUSAL_LLM_CACHE.move_to_end(cache_key)

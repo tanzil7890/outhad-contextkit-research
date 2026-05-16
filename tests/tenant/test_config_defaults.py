@@ -1,4 +1,4 @@
-"""Phase T1 — config + dataclass foundation tests."""
+""" config + dataclass foundation tests."""
 from __future__ import annotations
 
 import pytest

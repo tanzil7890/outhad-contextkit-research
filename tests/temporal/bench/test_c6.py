@@ -1,4 +1,4 @@
-"""Phase C6 — opt-in fp16 / int8 quantisation for the CLIP / SigLIP cache.
+"""opt-in fp16 / int8 quantisation for the CLIP / SigLIP cache.
 
 Tests cover the dtype kwarg flowing from the factory → embedder →
 ``_clip_cache.get_clip``, the ``_quantise`` dispatch (fp32 untouched,

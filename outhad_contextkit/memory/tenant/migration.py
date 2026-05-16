@@ -1,4 +1,4 @@
-"""Phase T8 — tenant backfill / export / import / migrate helpers.
+""" tenant backfill / export / import / migrate helpers.
 
 After upgrading from a pre-tenant build, operators run
 :func:`backfill_tenant` once to stamp every legacy memory + CGL node
@@ -80,7 +80,7 @@ def backfill_tenant(
 
 
 def export_tenant(memory: Any, tenant_id: str, dest_dir: str) -> Dict[str, int]:
-    """Phase T7 — write every storage row for ``tenant_id`` to ``dest_dir``.
+    """ write every storage row for ``tenant_id`` to ``dest_dir``.
 
     Output files (all under ``dest_dir``):
     * ``tenant.json``        — registry row.
@@ -222,7 +222,7 @@ def export_tenant(memory: Any, tenant_id: str, dest_dir: str) -> Dict[str, int]:
 
 
 def import_tenant(memory: Any, src_dir: str) -> Dict[str, int]:
-    """Phase T7 — reverse of :func:`export_tenant`.
+    """ reverse of :func:`export_tenant`.
 
     Re-creates the tenant + sub-tenants + role-bindings + history rows
     + CGL nodes/edges from a previous export. Idempotent: existing
@@ -336,7 +336,7 @@ def import_tenant(memory: Any, src_dir: str) -> Dict[str, int]:
 
 
 def migrate_tenant(memory: Any, src_id: str, dst_id: str) -> Dict[str, int]:
-    """Phase T7 — rewrite every storage row from ``src_id`` to ``dst_id``.
+    """ rewrite every storage row from ``src_id`` to ``dst_id``.
 
     Useful for renames / re-homing. Both ids must exist in the
     registry. Vector-store collection move is left to the caller in

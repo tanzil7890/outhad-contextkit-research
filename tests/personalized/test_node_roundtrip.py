@@ -1,4 +1,4 @@
-"""Phase F1 — MemoryNode round-trip covers the new MSPR fields.
+""" MemoryNode round-trip covers the new MSPR fields.
 
 Both backends must preserve ``access_count``, ``helpful_count``,
 ``unhelpful_count``, and ``last_feedback_at`` through serialise → persist →

@@ -1,4 +1,4 @@
-"""Phase F3 — FeedbackStore SQLite integration.
+""" FeedbackStore SQLite integration.
 
 Covers:
 * Schema bootstrap is idempotent (multiple instances on the same path).

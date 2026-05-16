@@ -1,4 +1,4 @@
-"""Tests for causal relationships in TCMGM Phase 2."""
+"""Tests for causal relationships in TCMGM ."""
 import pytest
 from datetime import datetime
 

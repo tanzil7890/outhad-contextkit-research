@@ -11,20 +11,20 @@ class Neo4jConfig(BaseModel):
     password: Optional[str] = Field(None, description="Password for the graph database")
     database: Optional[str] = Field(None, description="Database for the graph database")
     base_label: Optional[bool] = Field(None, description="Whether to use base node label __Entity__ for all entities")
-    # Phase PT1 — connection pool tuning. Neo4j-python-driver default
+    # connection pool tuning. Neo4j-python-driver default
     # is 100; bump for high-concurrency deploys, lower for resource-
     # constrained environments. None → keep driver defaults.
     max_connection_pool_size: Optional[int] = Field(
         None, ge=1, le=10000,
-        description="Max parallel sessions per driver (Phase PT1). None = driver default (100).",
+        description="Max parallel sessions per driver. None = driver default (100).",
     )
     connection_acquisition_timeout: Optional[float] = Field(
         None, gt=0, le=600,
-        description="Seconds a session waits for a free connection before raising (Phase PT1). None = driver default.",
+        description="Seconds a session waits for a free connection before raising. None = driver default.",
     )
     max_connection_lifetime: Optional[int] = Field(
         None, gt=0,
-        description="Seconds before a pooled connection is recycled (Phase PT1). None = driver default.",
+        description="Seconds before a pooled connection is recycled. None = driver default.",
     )
 
     @model_validator(mode="before")

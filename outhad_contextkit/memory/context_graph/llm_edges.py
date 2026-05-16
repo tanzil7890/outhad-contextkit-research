@@ -1,4 +1,4 @@
-"""Phase C — LLM-driven semantic edge synthesis.
+""" LLM-driven semantic edge synthesis.
 
 The ``LLMEdgeSynthesizer`` runs **after** structural topic edges have
 been synthesised for a newly-inserted memory. It takes the top-K

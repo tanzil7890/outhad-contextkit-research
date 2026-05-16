@@ -1,4 +1,4 @@
-"""Phase T3 — TenantResolver + VectorStoreFactory collection routing.
+""" TenantResolver + VectorStoreFactory collection routing.
 
 Covers:
 * Resolver disabled → always default tenant, base collection.

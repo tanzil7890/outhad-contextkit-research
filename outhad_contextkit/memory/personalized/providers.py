@@ -1,4 +1,4 @@
-"""Read-only providers consumed by the rerank loop — Phase F4.
+"""Read-only providers consumed by the rerank loop.
 
 A ``PersonalBoostProvider`` looks up a bounded, cached per-user boost
 for one memory id so ``_rerank_candidates`` stays a pure function of its
@@ -7,7 +7,7 @@ dict, so a rerank loop over N candidates performs at most N SQLite
 reads (one per candidate), with identical ids short-circuiting through
 the cache.
 
-Why a provider instead of passing the store directly? So Phase F8's
+Why a provider instead of passing the store directly? So
 pipeline can swap in a fake / pre-computed map for testing without
 booting SQLite.
 """
@@ -66,7 +66,7 @@ class PersonalBoostProvider:
         return value
 
     def prime(self, memory_ids) -> None:  # pragma: no cover - convenience
-        """Warm the cache for a batch of ids (future Phase F7 batching)."""
+        """Warm the cache for a batch of ids."""
         for mid in memory_ids:
             self.boost_for(mid)
 

@@ -1,4 +1,4 @@
-"""Phase T2 — TenantRegistry SQLite integration."""
+""" TenantRegistry SQLite integration."""
 from __future__ import annotations
 
 import pytest

@@ -1,5 +1,5 @@
 """
-Simple test script for TCMGM Phase 3 - Images Only.
+Simple test script for TCMGM  Images Only.
 
 Tests:
 1. Load images from test_dataset/images/
@@ -19,7 +19,7 @@ from outhad_contextkit.memory.temporal import (
 
 def main():
     print("=" * 70)
-    print("TCMGM Phase 3: Image-Only Test")
+    print("TCMGM : Image-Only Test")
     print("=" * 70)
     
     # Check if images directory exists

@@ -10,7 +10,7 @@ from outhad_contextkit.memory.temporal.types import TimeWindow
 logger = logging.getLogger(__name__)
 
 
-# Phase P6 — process-local LRU for query embeddings. Most TCMGM
+#  process-local LRU for query embeddings. Most TCMGM
 # deployments see the same query repeated (auto-complete UIs,
 # pagination, A/B traffic). Caching saves 50-200 ms per repeat.
 _QUERY_EMBED_CACHE: "OrderedDict[Tuple[int, str, str], Tuple[float, ...]]" = OrderedDict()
@@ -89,7 +89,7 @@ class RetrievalOrchestrator:
         """
         Fused retrieval combining vector, graph, and timeline.
 
-        Phase P1 — by default the four stages that don't depend on
+         by default the four stages that don't depend on
         the vector seed list (graph, timeline, causal, cross-modal)
         run concurrently inside a ``ThreadPoolExecutor``. Vector search
         always runs first because the causal stage seeds from its
@@ -183,7 +183,7 @@ class RetrievalOrchestrator:
         logger.debug("Fusing and ranking results...")
         fused = self._fuse_results(results, query)
 
-        # Phase A6 — optional cross-encoder rerank. The reranker takes
+        #  optional cross-encoder rerank. The reranker takes
         # the wider top-(rerank_top_k or 50) bi-encoder set and
         # re-orders by cross-encoder relevance, then the caller's
         # ``top_k`` is applied. Failure (missing dependency, model
@@ -221,7 +221,7 @@ class RetrievalOrchestrator:
         include_multimodal: bool,
         vector_results: List[Dict],
     ) -> tuple:
-        """Phase P1 — fan the 4 vector-independent stages out concurrently.
+        """ fan the 4 vector-independent stages out concurrently.
 
         Returns ``(graph_results, timeline_results, causal_chains,
         multimodal_results)``. Each stage is wrapped in its own
@@ -298,7 +298,7 @@ class RetrievalOrchestrator:
                 logger.warning("No embedding model available for vector search")
                 return []
             
-            # Phase P6 — cached embedding lookup; identical (model, query,
+            #  cached embedding lookup; identical (model, query,
             # mode) tuples skip the underlying embed call.
             query_embeddings = _cached_query_embed(
                 self.embedding_model, query, "search"
@@ -393,7 +393,7 @@ class RetrievalOrchestrator:
     ) -> List[Dict]:
         """Search timeline within time window.
 
-        Phase A5 — when ``query`` is supplied, re-rank time-window
+         when ``query`` is supplied, re-rank time-window
         results by semantic relevance to the query before returning.
         Combines a temporal recency floor (constant 0.7) with cosine
         similarity over the cached query embedding so timeline hits
@@ -417,7 +417,7 @@ class RetrievalOrchestrator:
                     "source": "timeline",
                 })
 
-            # Phase A5 — semantic rerank.
+            #  semantic rerank.
             if query and self.embedding_model is not None:
                 try:
                     formatted_results = self._semantic_rerank_timeline(
@@ -439,7 +439,7 @@ class RetrievalOrchestrator:
         recency_weight: float = 0.4,
         semantic_weight: float = 0.6,
     ) -> List[Dict]:
-        """Phase A5 — combine recency + cosine relevance."""
+        """ combine recency + cosine relevance."""
         if not events:
             return events
         # Reuse the same cached embedding helper as _vector_search.
@@ -499,7 +499,7 @@ class RetrievalOrchestrator:
     ) -> List[Dict]:
         """Explore causal chains from seed events.
 
-        Phase P4 — batched ``UNWIND``-driven query collapses the
+        batched ``UNWIND``-driven query collapses the
         previous N+1 pattern (3 seeds × forward+backward = 6 round-trips)
         into 2 round-trips total. Falls back to the per-event loop on
         backend error so partial outages still return chains.
@@ -605,7 +605,7 @@ class RetrievalOrchestrator:
     ) -> List[Dict]:
         """Fuse and rank results from all sources.
 
-        Phase A1 — default fusion is **Reciprocal Rank Fusion (RRF)**:
+         default fusion is **Reciprocal Rank Fusion (RRF)**:
         ``score(item) = Σ 1 / (k + rank_in_channel)`` with ``k=60``.
         RRF is the industry standard for hybrid retrieval (Elastic,
         Vespa, Pinecone) because it normalises across channels with

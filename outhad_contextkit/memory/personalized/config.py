@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 
 
 class IntentConfig(BaseModel):
-    """Phase F5 — Query intent classifier parameters."""
+    """ Query intent classifier parameters."""
 
     enabled: bool = Field(default=False)
     strategy: Literal["regex", "llm", "hybrid"] = Field(default="regex")
@@ -32,7 +32,7 @@ class IntentConfig(BaseModel):
 
 
 class FeedbackConfig(BaseModel):
-    """Phase F3/F4 — `record_feedback` + δ·personal_boost parameters."""
+    """`record_feedback` + δ·personal_boost parameters."""
 
     enabled: bool = Field(default=False)
     boost_delta: float = Field(
@@ -65,7 +65,7 @@ class FeedbackConfig(BaseModel):
 
 
 class FrequencyConfig(BaseModel):
-    """Phase F2 — access_count + ε·frequency parameters."""
+    """ access_count + ε·frequency parameters."""
 
     enabled: bool = Field(default=False)
     epsilon_weight: float = Field(
@@ -80,7 +80,7 @@ class FrequencyConfig(BaseModel):
 
 
 class RoleConfig(BaseModel):
-    """Phase F6 — role / tenant-aware retrieval parameters."""
+    """ role / tenant-aware retrieval parameters."""
 
     enabled: bool = Field(default=False)
     tenant_field: str = Field(
@@ -99,7 +99,7 @@ class RoleConfig(BaseModel):
 
 
 class SuccessConfig(BaseModel):
-    """Phase F7 — historical (query_hash, memory_id) success parameters."""
+    """ historical (query_hash, memory_id) success parameters."""
 
     enabled: bool = Field(default=False)
     zeta_weight: float = Field(

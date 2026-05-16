@@ -1,4 +1,4 @@
-"""Phase T3 — `TenantResolver`.
+""" `TenantResolver`.
 
 Translates a :class:`TenantContext` into a concrete routing decision:
 

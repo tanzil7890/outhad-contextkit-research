@@ -1,4 +1,4 @@
-"""Phases T6+T7+T8 — TenantAdmin facade, lifecycle, backfill / export.
+""" TenantAdmin facade, lifecycle, backfill / export.
 
 Covers:
 * Memory.tenant is None when feature flag is off; facade exists when on.

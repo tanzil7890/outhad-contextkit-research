@@ -381,7 +381,7 @@ class Neo4jBackend(ContextGraphBackend):
                 continue
         return result
 
-    # ---- frequency tracking (Phase F2) --------------------------------
+    # ---- frequency tracking  --------------------------------
     def bump_access_count(
         self,
         node_id: str,
@@ -429,7 +429,7 @@ class Neo4jBackend(ContextGraphBackend):
                 return 0
         return 0
 
-    # ---- importance scoring (Phase A) ---------------------------------
+    # ---- importance scoring  ---------------------------------
     def bump_relevance(
         self,
         node_id: str,

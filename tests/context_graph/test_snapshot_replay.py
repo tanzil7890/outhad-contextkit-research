@@ -1,4 +1,4 @@
-"""Phase B — portable JSON-Lines snapshots + changelog replay."""
+"""portable JSON-Lines snapshots + changelog replay."""
 from __future__ import annotations
 
 import json

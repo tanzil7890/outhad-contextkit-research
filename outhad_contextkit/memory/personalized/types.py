@@ -41,7 +41,7 @@ class RoleContext:
 
     Only ``tenant_id`` and ``role`` are new for MSPR; the session ids
     were already honoured by ``Memory.search``. Present on this struct
-    as a single source of truth for role/tenant-aware hooks (Phase F6).
+    as a single source of truth for role/tenant-aware hooks .
     """
 
     user_id: Optional[str] = None

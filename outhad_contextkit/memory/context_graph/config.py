@@ -30,7 +30,7 @@ class DecayConfig(BaseModel):
 
 
 class LLMEdgeConfig(BaseModel):
-    """Phase C — LLM-driven semantic edge synthesis parameters."""
+    """ LLM-driven semantic edge synthesis parameters."""
 
     enabled: bool = Field(
         default=False,
@@ -106,7 +106,7 @@ class EdgeSynthesisConfig(BaseModel):
     )
     use_llm_inference: bool = Field(
         default=False,
-        description="Opt-in LLM edge synthesis (Phase C). Equivalent to ``llm.enabled``.",
+        description="Opt-in LLM edge synthesis . Equivalent to ``llm.enabled``.",
     )
     llm: LLMEdgeConfig = Field(default_factory=LLMEdgeConfig)
 
@@ -125,10 +125,10 @@ class RetrievalConfig(BaseModel):
     alpha_dense: float = Field(default=0.55, ge=0, le=1)
     beta_bm25: float = Field(default=0.15, ge=0, le=1)
     gamma_graph: float = Field(default=0.30, ge=0, le=1)
-    # Phase D — retriever dispatcher + Personalised PageRank knobs.
+    #  retriever dispatcher + Personalised PageRank knobs.
     algorithm: Literal["bfs", "ppr"] = Field(
         default="bfs",
-        description="Which retriever to use. 'bfs' (default) preserves pre-Phase-D "
+        description="Which retriever to use. 'bfs' (default)  "
         "behaviour; 'ppr' swaps in the PersonalisedPageRankRetriever.",
     )
     ppr_damping: float = Field(
@@ -148,7 +148,7 @@ class RetrievalConfig(BaseModel):
         gt=0,
         description="Convergence tolerance for power iteration.",
     )
-    # Phase F1 — MSPR additive scoring terms. All default to 0.0 so the
+    #  MSPR additive scoring terms. All default to 0.0 so the
     # retriever collapses to the pre-MSPR formula (α·dense + β·lex + γ·graph)
     # when the operator has not opted in.
     delta_personal: float = Field(

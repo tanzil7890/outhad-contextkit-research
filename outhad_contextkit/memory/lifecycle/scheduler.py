@@ -1,4 +1,4 @@
-"""Phase D3 — periodic decay scheduler.
+"""periodic decay scheduler.
 
 Runs ``ContextGraph.tick_decay()`` + ``Memory.archive_low()`` on a
 daemon thread at ``interval_seconds`` cadence with optional jitter. Per

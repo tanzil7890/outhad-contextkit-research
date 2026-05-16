@@ -1,4 +1,4 @@
-"""Phase C1 — cascade causal extraction.
+"""cascade causal extraction.
 
 Three modes are exercised:
 * ``"llm"`` — legacy path; one LLM call per batch.

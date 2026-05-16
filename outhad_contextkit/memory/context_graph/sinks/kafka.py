@@ -1,4 +1,4 @@
-"""Phase E — Kafka sink (optional; requires ``confluent-kafka``).
+""" Kafka sink (optional; requires ``confluent-kafka``).
 
 Install with::
 

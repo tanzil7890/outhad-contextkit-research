@@ -345,7 +345,7 @@ class Memory(MemoryBase):
 
             self._context_graph = build_context_graph(cgl_config, neo4j_driver=driver)
             if self._context_graph is not None:
-                # Phase C — give the builder access to the extraction LLM so
+                # give the builder access to the extraction LLM so
                 # it can classify semantic edges. Opt-in via
                 # ``cgl_config.edges.use_llm_inference`` / ``edges.llm.enabled``.
                 llm_for_edges = None
@@ -410,7 +410,7 @@ class Memory(MemoryBase):
                 logger.error("Failed to initialise IntentRouter: %s", exc)
                 self._intent_router = None
 
-        # Phase F7 — QuerySuccessStore. Lazily constructed; default path
+        # QuerySuccessStore. Lazily constructed; default path
         # mirrors feedback_events.db so operators can ship one volume.
         if mspr_cfg.success.enabled:
             from outhad_contextkit.memory.personalized.success_store import (
@@ -427,7 +427,7 @@ class Memory(MemoryBase):
                 logger.error("Failed to initialise QuerySuccessStore: %s", exc)
                 self._success_store = None
 
-        # Phase F8 — PersonalizedRetrievalPipeline (orchestrator). The
+        # PersonalizedRetrievalPipeline (orchestrator). The
         # pipeline is a thin wrapper over _graph_first_rerank used by
         # external callers and tests. It always exists once the master
         # switch is on so apps can call it directly even with all
@@ -444,7 +444,7 @@ class Memory(MemoryBase):
             self._mspr_pipeline = None
 
     # ------------------------------------------------------------------
-    #  Tenant subsystem (Phases T1–T3) — initialised here so
+    #  Tenant subsystem  — initialised here so
     #  _vector_store_for / resolver are available to every public method.
     # ------------------------------------------------------------------
     def _init_tenant(self) -> None:
@@ -493,7 +493,7 @@ class Memory(MemoryBase):
             logger.error("Failed to initialise TenantResolver: %s", exc)
             self._tenant_resolver = None
 
-        # Phase T6 — public admin facade. Always built once registry +
+        # public admin facade. Always built once registry +
         # resolver are in place so callers see a consistent API.
         try:
             from outhad_contextkit.memory.tenant.admin import TenantAdmin
@@ -561,7 +561,7 @@ class Memory(MemoryBase):
         return client
 
     # ------------------------------------------------------------------
-    # Lifecycle subsystem (Phases D1–D8) — decay + versioning + cold storage.
+    # Lifecycle subsystem  — decay + versioning + cold storage.
     # ------------------------------------------------------------------
     def _init_lifecycle(self) -> None:
         """Initialise decay-v2 + versioning + scheduler + cold storage.
@@ -648,7 +648,7 @@ class Memory(MemoryBase):
                 logger.error("DecayScheduler init failed: %s", exc)
 
     def decay_score(self, memory_id: str) -> Optional[float]:
-        """Phase D2 — return the computed decay score for one memory.
+        """return the computed decay score for one memory.
 
         Returns ``None`` when decay-v2 is disabled or the memory is
         unknown.
@@ -677,7 +677,7 @@ class Memory(MemoryBase):
         threshold: Optional[float] = None,
         dry_run: bool = False,
     ) -> Dict[str, Any]:
-        """Phase D2 — archive every node whose decay_score is below ``threshold``.
+        """archive every node whose decay_score is below ``threshold``.
 
         ``threshold`` defaults to ``decay_v2.archive_threshold``.
         ``dry_run=True`` returns the candidate ids without mutation so
@@ -727,7 +727,7 @@ class Memory(MemoryBase):
         return {"archived": archived, "candidates": candidates, "threshold": thr}
 
     def start_decay_scheduler(self) -> None:
-        """Phase D3 — start the periodic decay scheduler (idempotent)."""
+        """start the periodic decay scheduler (idempotent)."""
         if self._lifecycle_scheduler is None:
             cfg = getattr(self.config, "decay_v2", None)
             if cfg is None or not cfg.enabled:
@@ -742,7 +742,7 @@ class Memory(MemoryBase):
         self._lifecycle_scheduler.start()
 
     def stop_decay_scheduler(self, *, timeout: float = 5.0) -> None:
-        """Phase D3 — stop the scheduler thread (idempotent)."""
+        """stop the scheduler thread (idempotent)."""
         if self._lifecycle_scheduler is not None:
             self._lifecycle_scheduler.stop(timeout=timeout)
 
@@ -762,7 +762,7 @@ class Memory(MemoryBase):
         run_id: Optional[str] = None,
         strength: float = 1.0,
     ) -> Optional[int]:
-        """Phase D6 — bump access_count + last_accessed_at for a memory
+        """bump access_count + last_accessed_at for a memory
         the agent actually used downstream.
 
         Returns the new access count, or ``None`` when the lifecycle
@@ -782,13 +782,13 @@ class Memory(MemoryBase):
         )
 
     def versions(self, memory_id: str) -> List[Any]:
-        """Phase D5 — return the version chain (oldest → newest)."""
+        """return the version chain (oldest → newest)."""
         if self._lifecycle_versioning is None:
             return []
         return self._lifecycle_versioning.list_versions(memory_id)
 
     def latest_version(self, memory_id: str) -> Optional[Any]:
-        """Phase D5 — return the newest non-superseded version, or None."""
+        """return the newest non-superseded version, or None."""
         if self._lifecycle_versioning is None:
             return None
         return self._lifecycle_versioning.latest(memory_id)
@@ -800,7 +800,7 @@ class Memory(MemoryBase):
         *,
         mode: Optional[str] = None,
     ) -> str:
-        """Phase D5 — diff two memory versions.
+        """diff two memory versions.
 
         ``mode`` defaults to ``decay_v2.versioning.diff_provider`` —
         ``"unified"`` (text), ``"json"`` (JSON-Patch), or ``"none"``.
@@ -853,7 +853,7 @@ class Memory(MemoryBase):
         to_version: int,
         actor_id: Optional[str] = None,
     ) -> Optional[str]:
-        """Phase D5 — append a new version whose payload equals
+        """append a new version whose payload equals
         ``version=to_version``'s payload.
 
         Returns the new memory_id or ``None`` when versioning is off /
@@ -898,7 +898,7 @@ class Memory(MemoryBase):
         return new_record.memory_id
 
     def demote_to_cold(self, memory_id: str) -> bool:
-        """Phase D7 — move ``memory_id`` to cold storage; remove hot copies."""
+        """ move ``memory_id`` to cold storage; remove hot copies."""
         if self._lifecycle_cold_storage is None:
             return False
         try:
@@ -925,7 +925,7 @@ class Memory(MemoryBase):
         return True
 
     def promote_from_cold(self, memory_id: str) -> Optional[Dict[str, Any]]:
-        """Phase D7 — pull payload back from cold storage and re-insert."""
+        """ pull payload back from cold storage and re-insert."""
         if self._lifecycle_cold_storage is None:
             return None
         payload = self._lifecycle_cold_storage.get(memory_id)
@@ -965,7 +965,7 @@ class Memory(MemoryBase):
         return payload
 
     def _prune_version_chains(self) -> int:
-        """Phase D4 helper — invoked by the scheduler each tick."""
+        """helper — invoked by the scheduler each tick."""
         if self._lifecycle_versioning is None:
             return 0
         cfg = getattr(self.config, "decay_v2", None)
@@ -996,7 +996,7 @@ class Memory(MemoryBase):
         return removed
 
     def backfill_decay_v2(self) -> Dict[str, int]:
-        """Phase D8 — recompute decay scores + run archive_low once.
+        """recompute decay scores + run archive_low once.
 
         Idempotent. Useful right after enabling decay_v2 on an existing
         deployment to bring archived state in line with the new
@@ -1014,7 +1014,7 @@ class Memory(MemoryBase):
         }
 
     # ------------------------------------------------------------------
-    # Tenant lifecycle (Phase T7) — sync helpers used by TenantAdmin.
+    # Tenant lifecycle — sync helpers used by TenantAdmin.
     # ------------------------------------------------------------------
     def _tenant_soft_delete(self, tenant_id: str) -> Dict[str, int]:
         """Archive every CGL node carrying ``tenant_id``.
@@ -1224,7 +1224,7 @@ class Memory(MemoryBase):
         )
         event_id = self._feedback_store.append(event)
 
-        # Phase F7 — also record (query_hash, memory_id, helpful) into the
+        # also record (query_hash, memory_id, helpful) into the
         # success store so future searches with the same query hash can
         # bias their ranking toward this memory.
         success_row_id: Optional[int] = None
@@ -1244,7 +1244,7 @@ class Memory(MemoryBase):
             except Exception as exc:  # pragma: no cover - defensive
                 logger.debug("record_feedback success_store.record failed: %s", exc)
 
-        # Emit a change-bus event so Phase-E subscribers (webhook/kafka/sse)
+        # Emit a change-bus event so subscribers (webhook/kafka/sse)
         # pick up feedback without having to tail the SQLite file themselves.
         try:
             self._context_graph._emit(
@@ -1281,7 +1281,7 @@ class Memory(MemoryBase):
         removed = 0
         if self._feedback_store is not None:
             removed = int(self._feedback_store.reset(user_id=user_id))
-        # Phase F7 — keep the two stores in sync when the operator wipes
+        # keep the two stores in sync when the operator wipes
         # feedback. Without this, hit_rate() would still serve stale rows.
         if self._success_store is not None:
             try:
@@ -1313,10 +1313,10 @@ class Memory(MemoryBase):
         return getattr(self, "_role_policy", None)
 
     def backfill_mspr(self) -> Dict[str, int]:
-        """Phase F8 — idempotent backfill of MSPR-derived tables.
+        """idempotent backfill of MSPR-derived tables.
 
         Today this rebuilds ``query_success`` from ``feedback_events``
-        when an operator upgrades from a pre-F7 build. Future phases
+        when an operator upgrades from a pre-F7 build. Future
         can hang additional backfills off the same entrypoint.
 
         Returns a counts dict ``{'success_rows': N, 'feedback_rows': M}``
@@ -1376,7 +1376,7 @@ class Memory(MemoryBase):
         default_tenant_id: Optional[str] = None,
         batch_size: int = 500,
     ) -> Dict[str, int]:
-        """Phase T8 — stamp legacy memory + CGL nodes with the default tenant.
+        """stamp legacy memory + CGL nodes with the default tenant.
 
         Idempotent. Returns ``{"history": N, "nodes": M, "edges": K}``.
         Raises ``RuntimeError`` when ``tenant.enabled=False``.
@@ -1389,19 +1389,19 @@ class Memory(MemoryBase):
         )
 
     def export_tenant(self, tenant_id: str, dest_dir: str) -> Dict[str, int]:
-        """Phase T7 — write every storage row for ``tenant_id`` to disk."""
+        """write every storage row for ``tenant_id`` to disk."""
         from outhad_contextkit.memory.tenant.migration import export_tenant
 
         return export_tenant(self, tenant_id, dest_dir)
 
     def import_tenant(self, src_dir: str) -> Dict[str, int]:
-        """Phase T7 — reverse of :meth:`export_tenant`."""
+        """reverse of :meth:`export_tenant`."""
         from outhad_contextkit.memory.tenant.migration import import_tenant
 
         return import_tenant(self, src_dir)
 
     def migrate_tenant(self, src_id: str, dst_id: str) -> Dict[str, int]:
-        """Phase T7 — rewrite every storage row from src_id to dst_id."""
+        """rewrite every storage row from src_id to dst_id."""
         from outhad_contextkit.memory.tenant.migration import migrate_tenant
 
         return migrate_tenant(self, src_id, dst_id)
@@ -2081,7 +2081,7 @@ class Memory(MemoryBase):
         # Graph-first re-ranking (Context-Graph Layer) — fully opt-in.
         should_use_cgl = self._should_use_context_graph(use_context_graph)
         if should_use_cgl:
-            # Phase F6 — build a RoleContext for the policy layer. tenant_id
+            # build a RoleContext for the policy layer. tenant_id
             # / role come from the filters dict the caller supplied (e.g.
             # ``filters={"tenant_id": "acme"}``). Falls through harmlessly
             # when those keys are absent.
@@ -2118,7 +2118,7 @@ class Memory(MemoryBase):
         *,
         seed_count: int,
     ) -> None:
-        """Phase F8 — fire ``outhad_contextkit.mspr.search`` once per search.
+        """fire ``outhad_contextkit.mspr.search`` once per search.
 
         Aggregates per-candidate context_graph debug payloads into a
         single counts payload so dashboards can chart adoption of each
@@ -2162,7 +2162,7 @@ class Memory(MemoryBase):
         run_id: Optional[str] = None,
         filters: Optional[Dict[str, Any]] = None,
     ) -> Any:
-        """Phase F6 — assemble a RoleContext for the policy layer.
+        """assemble a RoleContext for the policy layer.
 
         ``tenant_id`` and ``role`` are read from the supplied filters
         dict (or its nested ``metadata`` dict, mirroring the vector-store
@@ -2215,7 +2215,7 @@ class Memory(MemoryBase):
             retrieval_cfg = self.config.context_graph.retrieval
             self._context_graph.maybe_tick_decay()
 
-            # Phase F6 — apply RolePolicy.allow as a hard pre-rerank filter
+            # apply RolePolicy.allow as a hard pre-rerank filter
             # when configured. Soft (reweight) mode still runs but defers
             # the score adjustment to the post-rerank pass below.
             mspr_cfg_root = getattr(self.config, "mspr", None)
@@ -2241,7 +2241,7 @@ class Memory(MemoryBase):
                         hard_filter=True,
                     )
 
-            # Phase F5 — apply intent-based weight override before building
+            # apply intent-based weight override before building
             # the retriever so the per-intent α/β/γ/δ deltas take effect.
             # Returns the original config unchanged when intent is disabled.
             mspr_cfg = getattr(self.config, "mspr", None)
@@ -2289,7 +2289,7 @@ class Memory(MemoryBase):
             except Exception as exc:  # pragma: no cover - embed is best-effort
                 logger.debug("CGL query embed failed: %s", exc)
 
-            # Phase F4 — build a personal-boost provider only when MSPR
+            # build a personal-boost provider only when MSPR
             # feedback is enabled AND δ·personal is tuned > 0. When the
             # user has not opted in the provider stays None and the
             # retriever's score formula collapses to pre-MSPR maths.
@@ -2321,7 +2321,7 @@ class Memory(MemoryBase):
                     )
                     personal_provider = None
 
-            # Phase F7 — build the SuccessProvider only when the success
+            # build the SuccessProvider only when the success
             # store is enabled AND ζ·success > 0. The query hash is the
             # same SHA-256[:16] used by record_feedback so the lookup key
             # space stays consistent across writes and reads.
@@ -2367,7 +2367,7 @@ class Memory(MemoryBase):
                 success_provider=success_provider,
             )
 
-            # Phase F6 — soft-filter pass: when role is enabled but
+            # soft-filter pass: when role is enabled but
             # ``hard_filter=False`` we keep all candidates and multiply
             # their score via ``RolePolicy.reweight``. Re-sort to honour
             # the new scores.
@@ -2395,7 +2395,7 @@ class Memory(MemoryBase):
                     )
                 except Exception as exc:  # pragma: no cover - defensive
                     logger.debug("Role soft-filter failed: %s", exc)
-            # Phase F2 — only record_access on the top-K we are about to
+            # only record_access on the top-K we are about to
             # hand to the caller. Skipping BFS-expanded but unranked nodes
             # keeps the access_count signal proportional to what the user
             # actually consumes.
@@ -2417,7 +2417,7 @@ class Memory(MemoryBase):
                             "record_access failed for %s: %s", mem_id, exc
                         )
 
-            # Phase F8 — telemetry. Fires once per MSPR-enabled search;
+            # telemetry. Fires once per MSPR-enabled search;
             # no-op when the master switch is off so existing CGL-only
             # users see no new events. Best-effort; never raises.
             if (
@@ -2879,18 +2879,18 @@ class Memory(MemoryBase):
 
         Args:
             memory_id (str): ID of the memory to get history for.
-            tenant_id (Optional[str]): Phase T4 — when supplied, scopes
+            tenant_id (Optional[str]): — when supplied, scopes
                 the read to rows tagged with this tenant (or legacy
                 NULL rows). When omitted and ``MemoryConfig.tenant.enabled``
                 is True, the default tenant id is used.
-            sub_tenant_id (Optional[str]): Phase T4 — sub-tenant scope
+            sub_tenant_id (Optional[str]): — sub-tenant scope
                 filter. Same NULL-tolerance as ``tenant_id``.
 
         Returns:
             list: List of changes for the memory.
         """
         capture_event("outhad_contextkit.history", self, {"memory_id": memory_id, "sync_type": "sync"})
-        # Phase T4 — when tenant subsystem is enabled, scope by the
+        # — when tenant subsystem is enabled, scope by the
         # resolved tenant. Legacy callers that don't pass tenant_id
         # still get the default-tenant view, which (because the
         # resolver returns is_default=True for that case) maps to
@@ -4131,8 +4131,8 @@ class AsyncMemory(MemoryBase):
 
         Args:
             memory_id (str): ID of the memory to get history for.
-            tenant_id (Optional[str]): Phase T4 — tenant scope filter.
-            sub_tenant_id (Optional[str]): Phase T4 — sub-tenant scope filter.
+            tenant_id (Optional[str]): — tenant scope filter.
+            sub_tenant_id (Optional[str]): — sub-tenant scope filter.
 
         Returns:
             list: List of changes for the memory.

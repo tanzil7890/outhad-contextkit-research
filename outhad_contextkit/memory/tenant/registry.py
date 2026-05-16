@@ -1,4 +1,4 @@
-"""Phase T2 — SQLite-backed tenant registry.
+""" SQLite-backed tenant registry.
 
 Three narrow tables drive every tenant-aware decision:
 

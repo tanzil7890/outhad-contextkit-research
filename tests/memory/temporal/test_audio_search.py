@@ -72,7 +72,7 @@ def load_audio_files(audio_dir="test_dataset/audio"):
 
 def main():
     print("=" * 80)
-    print("Testing Audio Cross-Modal Search (Phase 3)")
+    print("Testing Audio Cross-Modal Search")
     print("=" * 80)
     
     # Load audio files

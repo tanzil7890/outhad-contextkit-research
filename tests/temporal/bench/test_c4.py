@@ -1,4 +1,4 @@
-"""Phase C4 — provider circuit breaker.
+"""provider circuit breaker.
 
 Two layers covered:
 

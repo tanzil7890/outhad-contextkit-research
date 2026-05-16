@@ -1,4 +1,4 @@
-"""Phase T1 — dataclasses for the tenant subsystem.
+""" dataclasses for the tenant subsystem.
 
 Kept dependency-free so importing this module is cheap. Persistence
 sits in :mod:`outhad_contextkit.memory.tenant.registry`; routing sits

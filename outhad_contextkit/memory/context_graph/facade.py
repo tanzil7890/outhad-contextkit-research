@@ -80,7 +80,7 @@ class ContextGraph:
         sub_tenant_id: Optional[str] = None,
     ) -> MemoryNode:
         now = _utcnow()
-        # Phase T5 — fall back to metadata-supplied tenant tags so
+        #  fall back to metadata-supplied tenant tags so
         # callers that already pass them via the payload metadata get
         # graph-level partitioning for free.
         meta_dict = dict(metadata or {})
@@ -184,7 +184,7 @@ class ContextGraph:
         self.backend.delete_node(memory_id)
         self._emit("node_deleted", memory_id, user_id, {})
 
-    # ---- frequency tracking (Phase F2) --------------------------------
+    # ---- frequency tracking  --------------------------------
     def record_access(
         self,
         memory_id: str,
@@ -318,7 +318,7 @@ class ContextGraph:
             sticky_edges = {EdgeType.CAUSAL, EdgeType.CONTRADICTS}
             for edge in list(self.backend.all_edges()):
                 if edge.type in sticky_edges:
-                    continue  # causal + CONTRADICTS (Phase C) are sticky
+                    continue  # causal + CONTRADICTS  are sticky
                 delta_hours = max(0.0, (now - edge.updated_at).total_seconds() / 3600.0)
                 if delta_hours == 0:
                     continue

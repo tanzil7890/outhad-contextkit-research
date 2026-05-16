@@ -1,4 +1,4 @@
-"""Phase 2 — NetworkX backend round-trip contract."""
+""" NetworkX backend round-trip contract."""
 from __future__ import annotations
 
 from datetime import datetime

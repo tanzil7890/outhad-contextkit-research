@@ -1,4 +1,4 @@
-"""Phase F7 — QuerySuccessStore SQLite integration + SuccessProvider.
+""" QuerySuccessStore SQLite integration + SuccessProvider.
 
 Covers:
 * Schema bootstrap is idempotent.

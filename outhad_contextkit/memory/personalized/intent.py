@@ -1,4 +1,4 @@
-"""Phase F5 — Query intent classifier.
+""" Query intent classifier.
 
 Two-stage pipeline:
 1. Regex fast-path  — configurable rules ordered by specificity; first hit wins.

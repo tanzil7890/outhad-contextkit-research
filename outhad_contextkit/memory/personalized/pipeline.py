@@ -1,4 +1,4 @@
-"""Phase F8 — ``PersonalizedRetrievalPipeline`` orchestrator.
+""" ``PersonalizedRetrievalPipeline`` orchestrator.
 
 The pipeline is a thin wrapper around the wiring already performed
 inside :meth:`Memory._graph_first_rerank` (which by F7 covers intent

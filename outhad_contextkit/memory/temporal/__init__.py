@@ -1,6 +1,6 @@
 """Temporal-Causal Multimodal Graph Memory (TCMGM) module.
 
-Phase P10 — every public symbol resolves through ``__getattr__`` so
+every public symbol resolves through ``__getattr__`` so
 ``import outhad_contextkit.memory.temporal`` itself is free.
 Heavyweight imports (``transformers``, ``torch``, ``librosa``, ``PIL``)
 only land when the caller actually touches a symbol that needs them.

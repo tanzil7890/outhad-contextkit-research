@@ -1,0 +1,320 @@
+---
+title: "Multi-Stage Personalized Retrieval (MSPR)"
+description: "Layer six personalised signals on top of the Context-Graph Layer — intent routing, frequency, public feedback, role/tenant filtering, and historical (query → memory) success. All flag-gated, default off."
+icon: "filter"
+---
+
+# Multi-Stage Personalized Retrieval
+
+MSPR is an **opt-in retrieval pipeline** that turns the existing Context-Graph
+Layer (CGL) from *generic hybrid retrieval* into a *personalised, role-aware,
+feedback-driven* retrieval stack — the shape used by production RAG platforms.
+
+It is **flag-gated by default**. With `MemoryConfig.mspr.enabled = False`
+(the default) every MSPR code path short-circuits and `Memory.search()`
+behaviour is byte-identical to the pre-MSPR build.
+
+## Why MSPR
+
+CGL gives us:
+
+* Vector + token-overlap + graph-reach scoring (`α · dense + β · lex + γ · graph`).
+* Recency decay + node relevance.
+* Backfill, versioning, change timeline.
+
+What it **doesn't** give us:
+
+| Gap | Phase |
+|---|---|
+| Query intent classifier (every query goes through the same pipeline) | F5 |
+| Frequency signal (`access_count`) | F2 |
+| Public feedback API (`record_feedback`) | F3 |
+| Feedback → retrieval score wiring (δ·personal) | F4 |
+| Role / tenant scoping with policy hook | F6 |
+| Historical success per query (ζ·success) | F7 |
+| Pipeline orchestrator + telemetry + migration | F8 |
+
+MSPR closes all of these without breaking a single existing
+`Memory.search()` caller.
+
+## Final scoring formula
+
+```
+score = (α·dense + β·lex + γ·graph + δ·personal + ε·frequency + ζ·success) · relevance
+```
+
+* `relevance` continues to multiply the entire score so archived-but-kept
+  nodes stay demoted.
+* All new weights default to **0.0** → formula collapses to the pre-MSPR
+  baseline.
+* Weights live on `RetrievalConfig` (`delta_personal`, `epsilon_frequency`,
+  `zeta_success`) so operators can tune per-deployment.
+
+| Term | Source | Phase |
+|------|--------|-------|
+| `α·dense` | vector-store cosine | (CGL) |
+| `β·lex` | token overlap | (CGL) |
+| `γ·graph` | BFS / PPR reach | (CGL) |
+| `δ·personal_boost` | `tanh(net / 3)` over `feedback_events.net` | F3 / F4 |
+| `ε·frequency` | `log1p(access_count) / log1p(peak)` | F2 |
+| `ζ·success_rate` | `helpful / total` for `(query_hash, memory_id)` | F7 |
+| intent re-weight | `IntentRouter.classify(query) → WeightOverride` | F5 |
+
+## Quick start
+
+```python
+from outhad_contextkit import Memory
+from outhad_contextkit.configs.base import MemoryConfig
+from outhad_contextkit.memory.personalized import TenantIsolationPolicy
+
+cfg = MemoryConfig()
+cfg.context_graph.enabled = True
+cfg.mspr.enabled = True
+cfg.mspr.feedback.enabled = True
+cfg.mspr.intent.enabled = True
+cfg.mspr.frequency.enabled = True
+cfg.mspr.role.enabled = True
+cfg.mspr.success.enabled = True
+
+# Tune the additive weights — leave at 0.0 to disable a term.
+cfg.context_graph.retrieval.delta_personal = 0.3
+cfg.context_graph.retrieval.epsilon_frequency = 0.1
+cfg.context_graph.retrieval.zeta_success = 0.2
+
+m = Memory(config=cfg)
+m.set_role_policy(TenantIsolationPolicy())
+
+m.add(
+    "Q4 revenue forecast: $4.2M",
+    user_id="alice",
+    metadata={"tenant_id": "acme"},
+)
+
+results = m.search(
+    "revenue forecast",
+    user_id="alice",
+    filters={"tenant_id": "acme"},
+    use_context_graph=True,
+)
+
+# Capture a verdict — bumps relevance now and biases ζ·success forever.
+m.record_feedback(
+    results["results"][0]["id"],
+    helpful=True,
+    user_id="alice",
+    query="revenue forecast",
+)
+```
+
+## The eight phases
+
+### F1 — Config + dataclass foundation
+
+* `MSPRConfig` master switch + nested `IntentConfig`, `FeedbackConfig`,
+  `FrequencyConfig`, `RoleConfig`, `SuccessConfig`.
+* `RetrievalConfig` extended with `delta_personal`, `epsilon_frequency`,
+  `zeta_success` (default 0.0).
+* `MemoryNode` extended with `access_count`, `helpful_count`,
+  `unhelpful_count`, `last_feedback_at`. Backends round-trip new fields
+  with safe `or 0` / `or None` fallbacks for legacy snapshots.
+
+### F2 — Frequency tracking
+
+* `bump_access_count` / `max_access_count` on the backend ABC.
+  Neo4j override uses atomic Cypher (`SET ... = coalesce(...,0)+$delta`).
+* `ContextGraph.record_access()` increments the count and emits a
+  `node_accessed` change-bus event.
+* `_rerank_candidates` adds `cfg.epsilon_frequency * normalised_frequency`
+  with a per-search cached `freq_peak` (one backend call, not N).
+* Top-K only — BFS-expanded but unranked candidates are intentionally
+  not counted.
+
+### F3 — Public feedback API
+
+* WAL SQLite `FeedbackStore` (`feedback_events.db`).
+  Schema bootstraps idempotently; three indexes
+  (`memory_id`, `user_id`, `query_hash`).
+* `Memory.record_feedback(memory_id, *, helpful, user_id, query, ...)`:
+  * Clamps cumulative boost at `max_boost_per_memory`.
+  * Calls `bump_relevance(...)` (atomic Cypher on Neo4j).
+  * Increments `helpful_count` / `unhelpful_count`, sets
+    `last_feedback_at`.
+  * Emits `memory_feedback_recorded` change-bus event.
+* `Memory.reset_feedback(*, user_id)` — scoped wipe.
+
+### F4 — Feedback → ranking wiring (δ·personal)
+
+* `PersonalBoostProvider` per-search dict cache (no N+1 SQLite reads).
+* `boost_for(memory_id)` → `tanh(net / 3)` clamped to `[-1, +1]`.
+* `_final_score` adds `cfg.delta_personal * personal_term`. δ=0 →
+  byte-identical ranking even when a provider is supplied.
+
+### F5 — Query intent classifier
+
+* Two-stage pipeline:
+  1. **Regex fast-path** — `_INTENT_RULES` ordered by specificity.
+     Hit returns confidence 1.0 and short-circuits the LLM call.
+  2. **LLM fallback** — `strategy="llm"|"hybrid"`, threaded with a
+     timeout. Bad JSON / unknown label / timeout → `UNKNOWN`.
+* `WeightOverride` adjusts `α / β / γ / δ` per intent label
+  (FACTUAL ↑β, CONVERSATIONAL ↑γ, DOCUMENTARY ↑γ, EXPLORATORY balanced).
+* `apply_weight_override` is pure — never mutates `RetrievalConfig`.
+* Dict-based cache with capacity `cache_size` (evict-all when full).
+
+### F6 — Role-aware retrieval
+
+* `RolePolicy` ABC + bundled implementations:
+  * `AllowAllPolicy` — pass-through sentinel.
+  * `TenantIsolationPolicy(tenant_field, treat_global_as_visible)`.
+  * `RoleScopePolicy(role_field, allowed_roles_field,
+    treat_unrestricted_as_visible)`.
+  * `CompositePolicy` — AND-combine; first deny wins; reweight is
+    product of children.
+* `Memory.set_role_policy(policy)` / `get_role_policy()` — type-validated.
+  Policies live off-Pydantic-config because they are callables.
+* Hard filter pre-rerank (drops denied seeds) **and** soft reweight
+  post-rerank (multiplies score by `RolePolicy.reweight()`, clamps to
+  `[0, 1]`, re-sorts).
+
+### F7 — Historical success tracking (ζ·success)
+
+* WAL SQLite `QuerySuccessStore` (`query_success.db`).
+* `record(*, query_hash, memory_id, helpful, user_id)` — append-only
+  verdicts; rejects empty keys (-1 sentinel).
+* `hit_rate(query_hash, memory_id, *, min_samples=3)` —
+  `Optional[float]` in `[0, 1]`; `None` when under-sampled so
+  shallow data doesn't skew rankings.
+* `top_memories(query_hash)` — debug + future paraphrase-recall hook.
+* `SuccessProvider` per-search hot cache; fail-soft on any backend error.
+* `record_feedback()` writes a row to `query_success` whenever both
+  `mspr.success.enabled` and the query hash is non-empty.
+* `reset_feedback()` also clears matching `query_success` rows so the
+  two stores stay in sync.
+
+### F8 — Pipeline + telemetry + migration
+
+* `PersonalizedRetrievalPipeline` orchestrates F1–F7 inside
+  `Memory.search()` and exposes a public `retrieve(query, ...)` API
+  for callers who pre-fetched their own seed set.
+* `outhad_contextkit.mspr.search` telemetry event fires once per
+  MSPR-enabled search with stage hit-counts and latency.
+* `Memory.backfill_mspr()` reconstructs `query_success` from existing
+  `feedback_events`. Idempotent. Raises `RuntimeError` when MSPR is
+  disabled.
+
+## Configuration matrix
+
+```python
+cfg = MemoryConfig()
+
+cfg.mspr.enabled = True
+
+# F2 — frequency
+cfg.mspr.frequency.enabled = True
+cfg.context_graph.retrieval.epsilon_frequency = 0.05
+
+# F3/F4 — feedback + δ·personal
+cfg.mspr.feedback.enabled = True
+cfg.mspr.feedback.boost_delta = 0.15
+cfg.mspr.feedback.penalty_delta = 0.10
+cfg.mspr.feedback.max_boost_per_memory = 0.60
+cfg.context_graph.retrieval.delta_personal = 0.30
+
+# F5 — intent
+cfg.mspr.intent.enabled = True
+cfg.mspr.intent.strategy = "hybrid"   # regex fast-path then LLM
+cfg.mspr.intent.cache_size = 1024
+
+# F6 — role
+cfg.mspr.role.enabled = True
+cfg.mspr.role.hard_filter = True
+
+# F7 — success
+cfg.mspr.success.enabled = True
+cfg.mspr.success.min_sample_size = 3
+cfg.context_graph.retrieval.zeta_success = 0.20
+```
+
+Every flag is independent. With the master switch on but every
+sub-feature off, the score collapses to `(α·dense + β·lex + γ·graph) ·
+relevance` — identical to pre-MSPR.
+
+## Public API surface
+
+| Method | Phase | Purpose |
+|--------|-------|---------|
+| `Memory.record_feedback(memory_id, *, helpful, ...)` | F3 | Capture a verdict; updates relevance + persists event + writes success row |
+| `Memory.reset_feedback(*, user_id)` | F3 / F7 | Wipe rows from both feedback + success stores |
+| `Memory.set_role_policy(policy)` / `get_role_policy()` | F6 | Install / read the role policy |
+| `Memory.backfill_mspr()` | F8 | Rebuild `query_success` from existing `feedback_events` |
+| `PersonalizedRetrievalPipeline.retrieve(...)` | F8 | Run the full F1–F7 pipeline on caller-supplied seeds |
+| `tick_decay()` / `reset_context_graph()` / `backfill_context_graph()` | (CGL) | Pre-existing |
+
+## Telemetry
+
+```json
+{
+  "event": "outhad_contextkit.mspr.search",
+  "intent_enabled":    true,
+  "feedback_enabled":  true,
+  "frequency_enabled": true,
+  "role_enabled":      true,
+  "success_enabled":   true,
+  "seed_count":        25,
+  "result_count":      10,
+  "feedback_hits":     3,
+  "success_hits":      1,
+  "frequency_hits":    7,
+  "latency_ms":        14
+}
+```
+
+When `MemoryConfig.ppmf.enabled=True`, free-text fields run through
+`TelemetrySanitizer` before emit.
+
+## Non-breaking guarantees
+
+1. **Master switch off by default** — zero new code paths execute.
+2. **Additive data model** — new node fields default to `0`/`None`;
+   legacy snapshots load via `or 0` fallbacks.
+3. **Additive public API** — `search()`, `add()`, `get()` signatures
+   unchanged. New keyword args default to `None` and route through
+   config when unset.
+4. **Lazy imports** — `personalized.*` modules only import when the
+   master switch is on.
+5. **Score math collapses** — default `δ=ε=ζ=0.0` → pre-MSPR formula.
+6. **Bounded feedback** — `tanh(net/3)` saturates at `±1`; cumulative
+   boost clamps at `max_boost_per_memory`.
+7. **No new hard dependencies** — SQLite + regex (stdlib); LLM
+   classifier reuses `Memory.llm`.
+8. **Changelog parity** — every mutation goes through
+   `ContextGraph._emit()` so existing change-bus subscribers
+   (webhook / kafka / sse) pick up new events for free.
+9. **Telemetry opt-in + redacted** — events only fire when
+   `mspr.enabled=True`; PPMF sanitiser still runs.
+
+## Migration
+
+Operators upgrading from a pre-F7 build:
+
+```python
+m.config.mspr.enabled = True
+m.config.mspr.success.enabled = True
+m._init_mspr()  # re-reads config; idempotent
+
+stats = m.backfill_mspr()
+# {"feedback_rows": 1234, "success_rows": 1188}
+```
+
+`backfill_mspr` walks every existing `feedback_events` row and writes
+the matching `(query_hash, memory_id, helpful)` tuple into
+`query_success`. Rows without a query hash are skipped. Running the
+backfill twice doubles rows but does not corrupt the schema — set
+`m._success_store.reset()` first if you want a clean rebuild.
+
+## See also
+
+* [Context-Graph Layer](./context-graph-layer.mdx) — the substrate MSPR
+  layers on top of.
+* `doc_extra/PERSONALIZED_RETRIEVAL/MSPR_IMPLEMENTATION_GUIDE.md` —
+  internal phase-by-phase implementation notes.

@@ -1,4 +1,4 @@
-"""Phase F2 — ``access_count`` tracking + ε·frequency scoring term.
+""" ``access_count`` tracking + ε·frequency scoring term.
 
 Covers:
 * ``bump_access_count`` primitive on the default NetworkX backend.

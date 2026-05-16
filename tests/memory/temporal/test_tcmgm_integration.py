@@ -1,4 +1,4 @@
-"""Integration tests for TCMGM - Phase 7."""
+"""Integration tests for TCMGM."""
 import pytest
 import os
 from datetime import datetime, timedelta

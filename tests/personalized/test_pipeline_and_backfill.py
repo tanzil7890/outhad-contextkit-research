@@ -1,4 +1,4 @@
-"""Phase F8 — PersonalizedRetrievalPipeline + backfill_mspr + telemetry.
+""" PersonalizedRetrievalPipeline + backfill_mspr + telemetry.
 
 Covers:
 * Pipeline passthrough when mspr disabled.

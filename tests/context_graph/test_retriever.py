@@ -1,4 +1,4 @@
-"""Phase 6 — ``GraphFirstRetriever`` seed→expand→re-rank behaviour.
+""" ``GraphFirstRetriever`` seed→expand→re-rank behaviour.
 
 The retriever is exercised against a real :class:`ContextGraph` + NetworkX
 backend so the BFS + scoring logic is tested end-to-end. No vector store,

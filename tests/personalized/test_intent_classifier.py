@@ -1,4 +1,4 @@
-"""Phase F5 — IntentRouter + apply_weight_override tests.
+""" IntentRouter + apply_weight_override tests.
 
 Covers:
 * All regex rules hit expected labels.

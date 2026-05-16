@@ -1,0 +1,286 @@
+---
+title: "Time-Aware Decay & Versioning"
+description: "Opt-in lifecycle layer for Outhad_ContextKit — periodic decay scheduler, decay_score per memory, opt-in immutable versioning with rollback, reference-based freshness, and pluggable cold archival storage."
+icon: "timer"
+---
+
+# Time-Aware Decay & Versioning
+
+Part D layers four production-grade lifecycle features on top of the
+Context-Graph Layer:
+
+1. **Decay score** — a stable `[0, 1]` float per memory that combines
+   recency, frequency, and feedback signals already tracked on every
+   CGL node.
+2. **Periodic decay scheduler** — a daemon thread (or asyncio task)
+   that runs `tick_decay()` + `archive_low()` + chain pruning at a
+   configurable cadence with jitter.
+3. **Opt-in immutable versioning** — `Memory.update(...)` writes a
+   new vector-store row per update; the old row stays readable but
+   `metadata.status='superseded'`. Public `versions / latest_version
+   / diff_versions / rollback` API.
+4. **Reference-based freshness** — distinct from search-time access:
+   `Memory.record_reference(memory_id)` bumps `access_count` only when
+   the agent actually used the memory in its response.
+5. **Cold archival storage** — pluggable `ColdStorageAdapter` (local
+   disk in-tree, S3 opt-in) so archived memories can move to cheap
+   storage and be promoted back on demand.
+
+The whole subsystem is **flag-gated**. With
+`MemoryConfig.decay_v2.enabled=False` (the default) every code path
+short-circuits and `Memory` is byte-identical to the pre-feature build.
+
+## Why this layer
+
+CGL ships `tick_decay` + `archive` + `relevance` + `relevance_floor`
+already, but it doesn't:
+
+| Gap | Fixed by |
+|---|---|
+| No single `[0, 1]` decay score per memory; multiple signals are scattered. | D2 — `compute_decay_score` |
+| Decay is **lazy only** (`tick_on_read`); no scheduled refresh. | D3 — `DecayScheduler` |
+| `Memory.update` overwrites the vector row; previous payload is lost. | D4 — immutable mode |
+| No public `versions / rollback` API. | D5 |
+| `access_count` cannot distinguish "agent used it" from "agent merely retrieved it". | D6 — `record_reference` |
+| Archived nodes stay in the same hot collection. | D7 — `ColdStorageAdapter` |
+
+## Decay-score formula
+
+```
+decay_score = w_recency  · exp(-λ · Δh_last_accessed)
+            + w_frequency · log1p(access_count) / log1p(peak_access)
+            + w_feedback  · (tanh((helpful - unhelpful) / 3) + 1) / 2
+```
+
+* `λ = ln(2) / (half_life_days · 24)` — wired from
+  `MemoryConfig.context_graph.decay.half_life_days` so the score
+  honours the existing CGL clock.
+* `peak_access` — `max_access_count()` across live nodes; cached per
+  scheduler tick.
+* Default weights `(0.6, 0.3, 0.1)` sum to 1.0; the model validator
+  rejects configurations whose weights exceed 1.0.
+
+## Quick start
+
+```python
+from outhad_contextkit import Memory
+from outhad_contextkit.configs.base import MemoryConfig
+
+cfg = MemoryConfig()
+cfg.decay_v2.enabled = True
+cfg.decay_v2.versioning.mode = "immutable"
+cfg.decay_v2.schedule.enabled = True
+cfg.decay_v2.schedule.interval_seconds = 1800
+cfg.decay_v2.cold_storage.backend = "local"
+cfg.decay_v2.track_references = True
+
+m = Memory(config=cfg)
+
+# D2 — score + archive
+m.decay_score(memory_id)
+m.archive_low(threshold=0.05, dry_run=True)
+
+# D3 — scheduler is auto-started by _init_lifecycle when schedule.enabled.
+# Call manually if you constructed Memory before flipping the flag:
+m.start_decay_scheduler()
+
+# D4 + D5 — versioning
+chain = m.versions(memory_id)        # → [VersionRecord, …]
+m.diff_versions(chain[0].memory_id, chain[-1].memory_id, mode="unified")
+m.rollback(memory_id, to_version=2)  # appends a new version with v2's payload
+
+# D6 — reference tracker
+m.record_reference(memory_id, strength=1.0)
+
+# D7 — cold storage round-trip
+m.demote_to_cold(memory_id)
+m.promote_from_cold(memory_id)
+
+# D8 — backfill + idempotent shutdown
+m.backfill_decay_v2()
+m.close()
+```
+
+## The eight phases
+
+### D1 — Config + dataclass foundation
+
+`DecayV2Config` master switch + nested `ScheduleConfig`,
+`VersioningConfig`, `ColdStorageConfig`. Validator enforces
+`weight_recency + weight_frequency + weight_feedback ≤ 1.0`.
+
+### D2 — Decay-score surface
+
+`compute_decay_score(node, *, cfg, peak_access, half_life_days)` is a
+pure function. `Memory.decay_score(memory_id)` and
+`Memory.archive_low(*, threshold, dry_run)` are the public hooks.
+`dry_run=True` returns the candidate ids without mutation.
+
+### D3 — Periodic decay scheduler
+
+`DecayScheduler` (sync) + `AsyncDecayScheduler` (asyncio).
+`Memory.start_decay_scheduler / stop_decay_scheduler / close`
+expose the lifecycle. The loop catches every exception so a transient
+backend failure can never break the daemon. Telemetry:
+`outhad_contextkit.lifecycle.tick`.
+
+### D4 — Opt-in immutable versioning
+
+```python
+cfg.decay_v2.versioning.mode = "immutable"
+```
+
+`Memory.update(memory_id, data=...)` then routes through
+`VersionedMemoryStore.insert_version`:
+
+* writes a new vector-store row (fresh UUID)
+* sets `metadata.status='superseded'` + `next_version_id` on the old
+  row
+* writes two history rows (ADD for the new id, UPDATE for the old)
+* upserts the new CGL node with `version=prev+1`,
+  `prev_version_id=old`
+* emits `EdgeType.UPDATED_FROM` edge `old → new`
+
+The chain is pruned to `keep_versions` length (default 10) on every
+scheduler tick.
+
+### D5 — Public versioning API
+
+```python
+m.versions(memory_id)         # walks prev_version_id + next_version_id
+m.latest_version(memory_id)   # newest non-superseded entry
+m.diff_versions(old_id, new_id, mode="unified" | "json" | "none")
+m.rollback(memory_id, to_version=2)
+```
+
+`rollback` is itself an immutable insert so the chain stays
+append-only and audit-friendly.
+
+### D6 — Reference-based decay refresh
+
+```python
+cfg.decay_v2.track_references = True
+m.record_reference(memory_id, strength=1.0)
+```
+
+Bumps `access_count` + refreshes `last_accessed_at`. Emits
+`node_referenced` change-bus event so dashboards distinguish references
+from plain accesses. Telemetry:
+`outhad_contextkit.lifecycle.reference`.
+
+### D7 — Cold archival lifecycle
+
+```python
+class ColdStorageAdapter(ABC):
+    def put(self, memory_id, payload) -> str: ...
+    def get(self, memory_id) -> Optional[Dict]: ...
+    def delete(self, memory_id) -> bool: ...
+```
+
+In-tree implementations:
+
+* `LocalDiskAdapter(root_dir)` — JSON file per memory; default for
+  `cold_storage.backend='local'`.
+* `S3Adapter(bucket, prefix)` — opt-in; lazy `boto3` import so the
+  default install never requires the dependency.
+
+`Memory.demote_to_cold(memory_id)` drops the vector row, archives the
+CGL node, and writes the payload to the adapter.
+`Memory.promote_from_cold(memory_id)` is the inverse.
+
+### D8 — Telemetry, docs, migration
+
+* Telemetry events — `outhad_contextkit.lifecycle.tick`,
+  `lifecycle.archive`, `lifecycle.rollback`, `lifecycle.reference`.
+  All sanitised through PPMF when enabled.
+* `Memory.backfill_decay_v2()` — recompute scores + run `archive_low`
+  once at upgrade time. Idempotent.
+* Async twins for every public Part-D method on `AsyncMemory`.
+
+## Configuration matrix
+
+```python
+cfg = MemoryConfig()
+cfg.decay_v2.enabled = True
+
+# Scoring weights (must sum to ≤ 1.0)
+cfg.decay_v2.weight_recency = 0.6
+cfg.decay_v2.weight_frequency = 0.3
+cfg.decay_v2.weight_feedback = 0.1
+cfg.decay_v2.archive_threshold = 0.05
+
+# Reference tracker
+cfg.decay_v2.track_references = True
+
+# Scheduler
+cfg.decay_v2.schedule.enabled = True
+cfg.decay_v2.schedule.interval_seconds = 3600
+cfg.decay_v2.schedule.jitter_seconds = 60
+
+# Versioning
+cfg.decay_v2.versioning.mode = "immutable"     # or "overwrite"
+cfg.decay_v2.versioning.keep_versions = 10
+cfg.decay_v2.versioning.diff_provider = "unified"
+
+# Cold storage
+cfg.decay_v2.cold_storage.backend = "local"     # or "s3" / "disabled"
+cfg.decay_v2.cold_storage.local_root = "/mnt/cold/outhad_contextkit"
+cfg.decay_v2.cold_storage.archive_grace_seconds = 86400
+```
+
+## Public API surface
+
+| Method | Phase |
+|--------|-------|
+| `Memory.decay_score(memory_id)` | D2 |
+| `Memory.archive_low(*, threshold, dry_run)` | D2 |
+| `Memory.start_decay_scheduler()` / `stop_decay_scheduler()` / `close()` | D3 |
+| `Memory.versions / latest_version / diff_versions / rollback` | D5 |
+| `Memory.record_reference(memory_id, *, strength)` | D6 |
+| `Memory.demote_to_cold / promote_from_cold` | D7 |
+| `Memory.backfill_decay_v2()` | D8 |
+| All of the above mirrored on `AsyncMemory` | — |
+
+## Non-breaking guarantees
+
+1. **Master switch off by default** — zero new code paths execute.
+2. **Additive data model** — leverages the existing
+   `MemoryNode.access_count / last_accessed_at / helpful_count /
+   unhelpful_count` fields; no new columns required.
+3. **Immutable versioning is opt-in** — default
+   `versioning.mode='overwrite'` keeps today's update behaviour.
+4. **Scheduler is opt-in** — default `schedule.enabled=False`.
+   Operators with their own cron stay in control.
+5. **Cold storage is opt-in** — default `cold_storage.backend=
+   'disabled'`. `S3Adapter` is the only opt-in dependency; never
+   imported until configured.
+6. **Lazy imports** — `lifecycle.*` heavyweight modules only import
+   when `decay_v2.enabled=True`.
+7. **Bounded chain pruning** — `keep_versions` cap prevents unbounded
+   storage growth; only superseded versions can be pruned.
+8. **Telemetry opt-in + redacted** — events sanitised through PPMF
+   when enabled.
+
+## Migration
+
+Operators upgrading from a pre-decay-v2 build:
+
+```python
+m.config.decay_v2.enabled = True
+m._init_lifecycle()       # re-reads config; idempotent
+stats = m.backfill_decay_v2()
+# {"archived": 7, "candidates": 7}
+```
+
+## See also
+
+* [Context-Graph Layer](./context-graph-layer.mdx) — substrate the
+  decay machinery operates on.
+* [MSPR](./multi-stage-personalized-retrieval.mdx) — F2 frequency
+  tracking + F3 feedback are the upstream signals fed into
+  `decay_score`.
+* [Tenant Architecture](./tenant-architecture.mdx) — Part D respects
+  tenant isolation; archived nodes carry their tenant tag through
+  cold storage.
+* `doc_extra/TENANT_AND_DECAY/IMPLEMENTATION_GUIDE.md` — phase-by-phase
+  implementation notes.

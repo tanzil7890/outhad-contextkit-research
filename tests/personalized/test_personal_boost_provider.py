@@ -1,4 +1,4 @@
-"""Phase F4 — PersonalBoostProvider caching + rerank integration."""
+""" PersonalBoostProvider caching + rerank integration."""
 from __future__ import annotations
 
 from datetime import datetime

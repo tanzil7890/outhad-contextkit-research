@@ -1,4 +1,4 @@
-"""Phase D2 — decay-score computation.
+"""decay-score computation.
 
 Combines three signals already tracked on every CGL node into a single
 ``[0, 1]`` float:

@@ -1,4 +1,4 @@
-"""Phase D1 — time-aware decay + versioning configuration.
+"""time-aware decay + versioning configuration.
 
 All fields default OFF. When ``DecayV2Config.enabled`` is ``False`` (the
 default) every Part-D code path short-circuits so behaviour of
@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field, model_validator
 
 
 class ScheduleConfig(BaseModel):
-    """Periodic decay scheduler parameters (Phase D3)."""
+    """Periodic decay scheduler parameters."""
 
     enabled: bool = Field(default=False)
     interval_seconds: float = Field(default=3600.0, gt=0,
@@ -29,7 +29,7 @@ class ScheduleConfig(BaseModel):
 
 
 class VersioningConfig(BaseModel):
-    """Immutable versioning parameters (Phase D4/D5)."""
+    """Immutable versioning parameters."""
 
     mode: Literal["overwrite", "immutable"] = Field(default="overwrite",
         description="overwrite — pre-feature in-place mutation. "
@@ -43,7 +43,7 @@ class VersioningConfig(BaseModel):
 
 
 class ColdStorageConfig(BaseModel):
-    """Cold-archival adapter parameters (Phase D7)."""
+    """Cold-archival adapter parameters."""
 
     backend: Literal["disabled", "local", "s3"] = Field(default="disabled")
     local_root: Optional[str] = Field(default=None,

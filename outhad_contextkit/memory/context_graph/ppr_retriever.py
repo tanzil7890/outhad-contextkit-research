@@ -1,4 +1,4 @@
-"""Phase D — Personalised PageRank retrieval over the Context-Graph.
+""" Personalised PageRank retrieval over the Context-Graph.
 
 Alternative to :class:`GraphFirstRetriever` that weighs candidates by
 their **global** random-walk probability given the seed distribution,

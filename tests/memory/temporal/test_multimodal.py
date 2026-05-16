@@ -1,4 +1,4 @@
-"""Tests for multimodal support (TCMGM Phase 3)."""
+"""Tests for multimodal support (TCMGM )."""
 import pytest
 from PIL import Image
 import io

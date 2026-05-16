@@ -1,4 +1,4 @@
-"""Phase T6 — public ``TenantAdmin`` facade.
+""" public ``TenantAdmin`` facade.
 
 Surfaced on ``Memory.tenant`` when ``MemoryConfig.tenant.enabled`` is
 True. Wraps :class:`TenantRegistry` plus tenant lifecycle (T7) so ops

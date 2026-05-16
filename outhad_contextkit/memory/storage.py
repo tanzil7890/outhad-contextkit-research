@@ -25,7 +25,7 @@ class SQLiteManager:
         ("is_deleted", "INTEGER"),
         ("actor_id", "TEXT"),
         ("role", "TEXT"),
-        # Phase T4 — tenant routing.
+        # — tenant routing.
         ("tenant_id", "TEXT"),
         ("sub_tenant_id", "TEXT"),
         # PPMF — encrypted blobs + metadata.
@@ -40,7 +40,7 @@ class SQLiteManager:
         self._lock = threading.Lock()
         self._migrate_history_table()
         self._create_history_table()
-        # Phase T4 — additive tenant columns. Run after the legacy
+        # — additive tenant columns. Run after the legacy
         # migration + create so we never miss the new columns on a
         # freshly bootstrapped DB.
         self._migrate_tenant_columns()
@@ -182,7 +182,7 @@ class SQLiteManager:
                 raise
 
     def _migrate_tenant_columns(self) -> None:
-        """Phase T4 — add ``tenant_id`` / ``sub_tenant_id`` columns.
+        """— add ``tenant_id`` / ``sub_tenant_id`` columns.
 
         Idempotent. Inspects ``PRAGMA table_info(history)`` and runs
         ``ALTER TABLE`` only when the columns are missing. Pre-existing
@@ -323,7 +323,7 @@ class SQLiteManager:
         """Return history rows for ``memory_id``.
 
         ``tenant_id`` / ``sub_tenant_id`` are *optional* scope filters
-        (Phase T4). When omitted (the default), every row matching
+        (). When omitted (the default), every row matching
         ``memory_id`` is returned — preserving the legacy contract for
         callers that have not opted into tenant-aware routing.
         """

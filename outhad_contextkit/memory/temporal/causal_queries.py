@@ -12,7 +12,7 @@ def get_causal_chains_batch(
     max_depth: int = 3,
     node_label: str = "",
 ) -> Dict[str, Dict[str, List[Dict]]]:
-    r"""Phase P4 — fetch forward + backward causal chains for many seeds in one round-trip.
+    r"""fetch forward + backward causal chains for many seeds in one round-trip.
 
     Replaces the N+1 pattern (``len(event_ids) * 2`` round-trips) with
     two ``UNWIND``-driven Cypher queries — one per direction — so a

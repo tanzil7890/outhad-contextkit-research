@@ -75,7 +75,7 @@ def get_image_description(image_obj, llm, vision_details):
       to the content list, otherwise the downstream fact-extractor sees
       whatever chat reply the vision LLM happened to produce, which is
       usually not extractable as a fact (and tests like
-      ``test_phase14_multimodal_dog_query.py`` end up with 0 events).
+      ``test_multimodal_dog_query.py`` end up with 0 events).
     """
     description_directive = {
         "type": "text",

@@ -48,7 +48,7 @@ class EmbedderConfig:
 
             clip_model_name: HuggingFace model id for the
                 vision-language backbone shared by ``clip`` text and
-                image embedders (Phase A7). Examples:
+                image embedders . Examples:
                 - ``"openai/clip-vit-base-patch32"`` (default, 88M params, fastest)
                 - ``"openai/clip-vit-large-patch14"`` (304M params, +2-5% recall)
                 - ``"google/siglip-base-patch16-224"`` (200M params, better text-image alignment)
@@ -207,7 +207,7 @@ def create_embedder(
         audio_embedder: Audio embedder to use ("whisper", "clap", or "hybrid")
         openai_api_key: OpenAI API key (optional, reads from env)
         clip_model_name: HuggingFace id for the CLIP / SigLIP backbone
-            shared by the text + image embedders (Phase A7 — opt-in
+            shared by the text + image embedders ( opt-in
             larger model, e.g. ``"openai/clip-vit-large-patch14"`` or
             ``"google/siglip-base-patch16-224"``).
 
@@ -298,7 +298,7 @@ def create_large_clip_embedder(
     openai_api_key: Optional[str] = None,
     audio_embedder: str = "whisper",
 ):
-    """Phase A7 — opt-in CLIP-large backbone (304M params).
+    """ opt-in CLIP-large backbone (304M params).
 
     +2-5% recall@10 on cross-modal benchmarks vs CLIP-base, at the cost
     of ~3.5× the RAM + ~2× the inference time. Use when retrieval
@@ -318,7 +318,7 @@ def create_fp16_embedder(
     audio_embedder: str = "whisper",
     clip_model_name: str = "openai/clip-vit-base-patch32",
 ):
-    """Phase C6 — opt-in fp16 weights for the CLIP / SigLIP backbone.
+    """opt-in fp16 weights for the CLIP / SigLIP backbone.
 
     ~50% RAM cut + 1.5-2× faster inference on CUDA. CPU fp16 is sometimes
     slower than fp32 so this is opt-in and not the default.
@@ -337,7 +337,7 @@ def create_siglip_embedder(
     openai_api_key: Optional[str] = None,
     audio_embedder: str = "whisper",
 ):
-    """Phase A7 — opt-in SigLIP backbone (200M params).
+    """ opt-in SigLIP backbone (200M params).
 
     SigLIP's sigmoid loss yields better text-image alignment than
     CLIP's softmax-contrastive loss, especially for short captions and

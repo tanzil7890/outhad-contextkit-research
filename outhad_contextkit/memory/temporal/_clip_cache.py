@@ -1,4 +1,4 @@
-"""Phase P2 + A7 + C6 — module-level CLIP / SigLIP model + processor cache.
+"""Module-level CLIP / SigLIP model + processor cache.
 
 Vision-language weights are 500 MB-2 GB; loading takes 2-10 seconds on
 CPU. Without a cache, both ``CLIPTextEmbedder`` and ``CLIPImageEmbedder``
@@ -6,7 +6,7 @@ CPU. Without a cache, both ``CLIPTextEmbedder`` and ``CLIPImageEmbedder``
 ``CLIPModel.from_pretrained(...)`` independently → 2× the load time
 + 2× the RAM footprint.
 
-Phase A7 adds opt-in support for larger / better-aligned vision-language
+ adds opt-in support for larger / better-aligned vision-language
 backbones — CLIP-large and SigLIP — through the same cache. The
 processor + model API surface (``get_text_features`` /
 ``get_image_features``) is identical across backbones, so the embedder
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_CLIP_MODEL = "openai/clip-vit-base-patch32"
 
-# Phase C6 — quantisation dtype.
+# quantisation dtype.
 # - "fp32" (default): full precision; matches pre-C6 behaviour.
 # - "fp16": half precision via ``model.half()``. ~50% RAM cut, 1.5-2×
 #           faster inference on CUDA. CPU fp16 is sometimes slower
@@ -95,7 +95,7 @@ def _load(model_name: str) -> Tuple[Any, Any]:
 
 
 def _quantise(model: Any, dtype: str) -> Any:
-    """Phase C6 — apply opt-in quantisation to a freshly-loaded model.
+    """apply opt-in quantisation to a freshly-loaded model.
 
     ``fp32`` returns the model untouched. ``fp16`` casts via
     ``model.half()``. ``int8`` runs dynamic quantisation on linear
@@ -151,7 +151,7 @@ def get_clip(
 
     Supports CLIP and SigLIP; selection is by model-id prefix.
 
-    Phase C6 — ``dtype`` selects opt-in quantisation:
+    ``dtype`` selects opt-in quantisation:
     * ``"fp32"`` (default): full precision; matches pre-C6 behaviour.
     * ``"fp16"``: ~50% RAM cut, 1.5-2× faster on CUDA.
     * ``"int8"``: dynamic int8 on linear layers; ~75% RAM cut on CPU.

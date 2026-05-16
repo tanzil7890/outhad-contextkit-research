@@ -15,7 +15,7 @@ from outhad_contextkit.memory.temporal.base_embedders import BaseAudioEmbedder
 logger = logging.getLogger(__name__)
 
 
-# Phase P5 — process-local LRU keyed on SHA-256 of audio bytes.
+# process-local LRU keyed on SHA-256 of audio bytes.
 # Repeat retrievals on the same audio (search after add, replay,
 # RAG context windows) skip the Whisper API round-trip and the
 # associated dollar cost.
@@ -23,7 +23,7 @@ _TRANSCRIPT_CACHE: "OrderedDict[str, str]" = OrderedDict()
 _TRANSCRIPT_CACHE_CAP = 256
 _TRANSCRIPT_LOCK = RLock()
 
-# Phase P9 — CLAP embedding cache keyed on the same audio hash so a
+# CLAP embedding cache keyed on the same audio hash so a
 # second pass over the bytes never re-loads tempfiles or re-runs the
 # model.
 _CLAP_EMBED_CACHE: "OrderedDict[str, List[float]]" = OrderedDict()
@@ -133,7 +133,7 @@ class WhisperAudioEmbedder(BaseAudioEmbedder):
             return self._placeholder_embedding(audio_bytes)
 
         try:
-            # Phase P5 — SHA-256 transcript cache short-circuits the
+            # SHA-256 transcript cache short-circuits the
             # Whisper API call for repeated audio.
             cache_key = _audio_hash(audio_bytes)
             transcript = _transcript_cache_get(cache_key)
@@ -235,7 +235,7 @@ class CLAPAudioEmbedder(BaseAudioEmbedder):
             logger.warning("CLAP not available, using placeholder")
             return self._placeholder_embedding(audio_bytes)
 
-        # Phase P9 — cache CLAP embeddings keyed on the same SHA-256
+        # cache CLAP embeddings keyed on the same SHA-256
         # hash used by Whisper so repeat passes never re-hit tempfile
         # I/O or rerun the model.
         cache_key = _audio_hash(audio_bytes)

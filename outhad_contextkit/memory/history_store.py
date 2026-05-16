@@ -1,4 +1,4 @@
-"""Phase D3 — backend-agnostic history store.
+"""Backend-agnostic history store.
 
 Provides a small, dialect-portable interface around the memory mutation
 log so multiple pods can share state without colliding on a SQLite file

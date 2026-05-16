@@ -1,0 +1,278 @@
+---
+title: "Tenant + Sub-Tenant Architecture"
+description: "Hierarchical multi-tenant routing for Outhad_ContextKit — isolated vector collections, partitioned history, sub-tenants, RBAC, lifecycle ops. HydraDB-style API, native SQLite + factory implementation."
+icon: "buildings"
+---
+
+# Tenant + Sub-Tenant Architecture
+
+Tenants are an **opt-in** isolation layer that turns Outhad_ContextKit
+into a multi-tenant memory store. Each tenant can have its own
+vector-store collection, scoped history, role bindings, and a tree of
+sub-tenants (department / user / project / custom kinds).
+
+The whole subsystem is **flag-gated**. With
+`MemoryConfig.tenant.enabled=False` (the default) every code path
+short-circuits and `Memory` is byte-identical to the pre-tenant build.
+
+## Why tenants
+
+The Context-Graph Layer + MSPR layer give you ranking, decay, and
+feedback. What they don't give you out of the box:
+
+| Gap | Fixed by |
+|---|---|
+| All callers share one vector-store collection. | T3 — `mode='collection'` |
+| History rows can't be filtered by tenant. | T4 — `tenant_id` column + indexes |
+| No tenant registry, no admin API. | T2 + T6 |
+| No sub-tenant taxonomy (department / user / project). | T1 + T2 |
+| No RBAC bindings. | T2 + T6 |
+| No tenant lifecycle (soft / hard delete, export, migrate). | T7 |
+| No tenant backfill from legacy data. | T8 |
+
+## Three isolation modes
+
+```
+cfg.tenant.isolation.mode = "filter"     # default
+                          | "collection"
+                          | "physical"   # reserved
+```
+
+| Mode | Vector store | History | CGL | When to use |
+|------|--------------|---------|-----|-------------|
+| `filter` (default) | shared collection + metadata filter at query time | `tenant_id` column scoped per query | hard-skip cross-tenant nodes | small fleets, cheapest |
+| `collection` | one collection per tenant via factory `collection_override` | scoped queries (NULL-tolerant) | hard-skip + collection isolation | mid-size; per-tenant hot/cold tuning |
+| `physical` | one DB / Neo4j instance per tenant | per-DB | per-DB | regulated workloads (T1 hook only — not implemented) |
+
+Both `filter` and `collection` modes ship today.
+
+## Quick start
+
+```python
+from outhad_contextkit import Memory
+from outhad_contextkit.configs.base import MemoryConfig
+
+cfg = MemoryConfig()
+cfg.tenant.enabled = True
+cfg.tenant.isolation.mode = "collection"  # one vector collection per tenant
+
+m = Memory(config=cfg)
+
+# Admin API.
+m.tenant.create_tenant(id="acme", name="Acme Corp")
+m.tenant.create_sub_tenant(tenant_id="acme", name="finance",
+                           kind="department")
+m.tenant.assign_role(
+    tenant_id="acme", principal="alice@acme.com", role="member"
+)
+
+# Tenant-scoped writes.
+m.add(
+    "Q4 forecast: $4.2M",
+    user_id="alice",
+    metadata={"tenant_id": "acme", "sub_tenant_id": "finance"},
+)
+
+# Tenant-scoped reads.
+res = m.search(
+    "revenue forecast",
+    user_id="alice",
+    filters={"tenant_id": "acme"},
+)
+m.history(res["results"][0]["id"], tenant_id="acme")
+```
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ Tenant Registry (SQLite)                                         │
+│  tenants(id, name, status, created_at, ...)                      │
+│  sub_tenants(id, tenant_id, name, kind, ...)                     │
+│  role_bindings(id, tenant_id, sub_tenant_id, principal, role)    │
+└──────────────────────────────────────────────────────────────────┘
+                          │
+        ┌─────────────────┼─────────────────┐
+        ▼                 ▼                 ▼
+┌────────────────┐ ┌────────────────┐ ┌────────────────┐
+│ Vector store   │ │ History SQLite │ │ CGL store      │
+│ collection per │ │ tenant_id col  │ │ tenant_id      │
+│ tenant         │ │ + indexes      │ │ on every node  │
+└────────────────┘ └────────────────┘ └────────────────┘
+```
+
+## The eight phases
+
+### T1 — Config + dataclass foundation
+
+* `TenantConfig` master switch + `IsolationConfig` (filter / collection /
+  physical-reserved) + `RegistryConfig` (sqlite_path, cache_size).
+* `Tenant`, `SubTenant`, `RoleBinding`, `TenantContext` dataclasses;
+  `RoleContext.sub_tenant_id` field appended.
+
+### T2 — Tenant registry SQLite store
+
+* WAL `TenantRegistry` with idempotent 3-table schema.
+* Tenant CRUD; sub-tenant CRUD with deterministic
+  `tenant::kind::slug` ids; role-binding CRUD with NULL-aware
+  uniqueness; LRU caches for `get_tenant` + `has_role`.
+
+### T3 — Vector-store per-tenant collection routing
+
+* `VectorStoreFactory.create(..., collection_override=...)` — per-
+  provider collection-name field map (Baidu uses `table_name`).
+* `TenantResolver.resolve(ctx)` returns `ResolvedTenant` with the
+  collection name, history filter, and CGL filter.
+* `Memory._vector_store_for(resolved)` caches per-tenant clients.
+
+### T4 — History-store tenant partitioning
+
+* `_migrate_tenant_columns` idempotent `ALTER TABLE` adds
+  `tenant_id` + `sub_tenant_id` + indexes.
+* `add_history` / `get_history` accept tenant scope kwargs.
+* `Memory.history(memory_id, *, tenant_id, sub_tenant_id)` mirrors.
+
+### T5 — CGL tenant propagation
+
+* `MemoryNode.tenant_id` + `sub_tenant_id` fields; both backends
+  round-trip them.
+* `ContextGraph.upsert_memory_node` falls back to metadata-supplied
+  tenant tags so existing payload-shaped callers get partitioning.
+* `IncrementalGraphBuilder` hooks accept tenant kwargs.
+* Retriever (BFS + PPR) hard-skips cross-tenant nodes when scope
+  kwargs are supplied. NULL-tagged legacy nodes still surface.
+
+### T6 — Public admin API (`Memory.tenant`)
+
+```python
+class TenantAdmin:
+    # Tenants
+    def create_tenant(*, id, name, metadata=None) -> Tenant
+    def list_tenants(*, status=None) -> List[Tenant]
+    def get_tenant(tenant_id) -> Optional[Tenant]
+    def update_tenant(tenant_id, *, status=None, metadata=None) -> Optional[Tenant]
+    def delete_tenant(tenant_id, *, hard=False) -> Dict[str, int]
+
+    # Sub-tenants
+    def create_sub_tenant(*, tenant_id, name, kind="custom", metadata=None) -> SubTenant
+    def list_sub_tenants(tenant_id) -> List[SubTenant]
+    def get_sub_tenant(sub_tenant_id) -> Optional[SubTenant]
+    def delete_sub_tenant(sub_tenant_id) -> bool
+
+    # RBAC
+    def assign_role(*, tenant_id, principal, role, ...) -> RoleBinding
+    def revoke_role(*, tenant_id, principal, role, ...) -> bool
+    def list_roles_for(principal) -> List[RoleBinding]
+    def has_role(*, principal, tenant_id, role=None, ...) -> bool
+```
+
+`Memory.tenant` is `None` when `tenant.enabled=False`. Calling any
+admin method when the subsystem is disabled raises `RuntimeError`.
+
+### T7 — Tenant lifecycle
+
+```python
+# Soft delete — flips status, archives CGL nodes, leaves storage rows.
+m.tenant.delete_tenant("acme", hard=False)
+# {"history": 0, "vectors": 0, "nodes": 17, "edges": 0, "tenant": 1}
+
+# Hard delete — GDPR-grade cascade through every storage layer.
+m.tenant.delete_tenant("acme", hard=True)
+# {"vectors": 1, "history": 42, "nodes": 17, "edges": 28, "tenant": 1}
+
+# Offline export / import (round-trips registry + history + CGL).
+m.export_tenant("acme", "/backups/acme")
+m.import_tenant("/backups/acme")
+
+# Rename / re-home in place (no content mutation).
+m.migrate_tenant("acme", "acme_renamed")
+```
+
+### T8 — Telemetry, docs, migration
+
+* Telemetry events: `outhad_contextkit.tenant.created`,
+  `outhad_contextkit.tenant.deleted` (sanitised through PPMF when
+  enabled).
+* `Memory.backfill_tenant(default_tenant_id, batch_size)` rewrites
+  legacy NULL rows + CGL nodes to the default tenant. Idempotent.
+  Returns `{"history": N, "nodes": M, "edges": K}`.
+* Async twins for every public T7/T8 method on `AsyncMemory`.
+
+## Configuration matrix
+
+```python
+cfg = MemoryConfig()
+
+cfg.tenant.enabled = True
+cfg.tenant.default_tenant_id = "__default__"  # reserved sentinel
+cfg.tenant.sub_tenant_field = "sub_tenant_id"
+
+# Isolation
+cfg.tenant.isolation.mode = "collection"   # or "filter" / "physical"
+cfg.tenant.isolation.deny_cross_tenant_writes = True
+cfg.tenant.isolation.require_tenant_id_on_add = False
+
+# Registry
+cfg.tenant.registry.sqlite_path = None  # → {outhad_contextkit_dir}/tenant_registry.db
+cfg.tenant.registry.cache_size = 512
+```
+
+## Public API surface
+
+| Method | Phase | Purpose |
+|--------|-------|---------|
+| `Memory.tenant.create_tenant / list_tenants / get_tenant / update_tenant` | T6 | Tenant CRUD |
+| `Memory.tenant.delete_tenant(tenant_id, *, hard)` | T6/T7 | Soft / hard delete |
+| `Memory.tenant.create_sub_tenant / list_sub_tenants / delete_sub_tenant` | T6 | Sub-tenant CRUD |
+| `Memory.tenant.assign_role / revoke_role / list_roles_for / has_role` | T6 | RBAC |
+| `Memory.history(memory_id, *, tenant_id, sub_tenant_id)` | T4 | Tenant-scoped history |
+| `Memory.backfill_tenant(default_tenant_id)` | T8 | Stamp legacy rows |
+| `Memory.export_tenant / import_tenant / migrate_tenant` | T7 | Lifecycle ops |
+| All of the above mirrored on `AsyncMemory` | — | Async twins |
+
+## Non-breaking guarantees
+
+1. **Master switch off by default** — zero new code paths execute.
+2. **Additive data model** — new columns / fields default to `NULL`;
+   legacy rows load via NULL-tolerant queries.
+3. **Additive public API** — `search()`, `add()`, `get()`,
+   `update()`, `history()` signatures unchanged. New keyword args are
+   optional.
+4. **Single-tenant fallback** — when feature is on but the caller
+   doesn't pass a tenant, every operation routes to
+   `tenant.default_tenant_id="__default__"`.
+5. **Lazy imports** — `tenant.*` heavyweight modules only import when
+   `tenant.enabled=True`; `sys.modules` test verifies this.
+6. **Reserved sentinel** — admin API rejects creation of a tenant with
+   id `"__default__"`.
+7. **Bounded RBAC bindings** — `assign_role` is idempotent; same
+   `(tenant, sub_tenant, principal, kind, role)` returns the existing
+   row instead of duplicating.
+8. **Cascade deletes are explicit** — `delete_tenant(hard=True)`
+   returns counts so operators can audit the blast radius.
+
+## Migration
+
+Operators upgrading from a pre-tenant build:
+
+```python
+m.config.tenant.enabled = True
+m._init_tenant()      # re-reads config; idempotent
+
+stats = m.backfill_tenant()
+# {"history": 1234, "nodes": 802, "edges": 0}
+```
+
+`backfill_tenant` walks every legacy row (`tenant_id IS NULL`) and
+stamps it with `tenant.default_tenant_id`. Rows already tagged are
+skipped — running the backfill twice is safe.
+
+## See also
+
+* [Context-Graph Layer](./context-graph-layer.mdx) — substrate the
+  tenant fields piggy-back on.
+* [MSPR](./multi-stage-personalized-retrieval.mdx) — `RolePolicy` /
+  `TenantIsolationPolicy` (Phase F6) is the retrieval-time companion
+  to T3 storage isolation.
+* `doc_extra/TENANT_AND_DECAY/IMPLEMENTATION_GUIDE.md` — phase-by-phase
+  implementation notes.

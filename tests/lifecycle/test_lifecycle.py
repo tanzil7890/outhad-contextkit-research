@@ -1,4 +1,4 @@
-"""Phase D1-D8 — lifecycle subsystem tests.
+""" lifecycle subsystem tests.
 
 Covers:
 * D1: config defaults + weight-sum validator.

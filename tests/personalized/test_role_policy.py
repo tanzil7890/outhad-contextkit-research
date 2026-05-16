@@ -1,4 +1,4 @@
-"""Phase F6 — RolePolicy ABC + bundled policies + apply_role_policy.
+""" RolePolicy ABC + bundled policies + apply_role_policy.
 
 Covers:
 * TenantIsolationPolicy: same-tenant pass, cross-tenant deny, global visibility,

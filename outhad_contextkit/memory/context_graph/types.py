@@ -16,7 +16,7 @@ class EdgeType(str, Enum):
     TEMPORAL_NEXT = "TEMPORAL_NEXT"
     UPDATED_FROM = "UPDATED_FROM"
     CAUSAL = "CAUSAL"
-    # Phase C — LLM-inferred semantic edges.
+    #  LLM-inferred semantic edges.
     SUPPORTS = "SUPPORTS"
     CONTRADICTS = "CONTRADICTS"
     REFINES = "REFINES"
@@ -48,13 +48,13 @@ class MemoryNode:
     agent_id: Optional[str] = None
     run_id: Optional[str] = None
     last_accessed_at: Optional[datetime] = None
-    # Phase F1/F2 — MSPR counters. Default 0/None so existing serialised
+    #MSPR counters. Default 0/None so existing serialised
     # nodes (pickle / JSONL / Neo4j rows) deserialise with safe zero-state.
     access_count: int = 0
     helpful_count: int = 0
     unhelpful_count: int = 0
     last_feedback_at: Optional[datetime] = None
-    # Phase T5 — tenant routing fields. NULL on legacy nodes; the
+    #  tenant routing fields. NULL on legacy nodes; the
     # resolver treats NULL as the default tenant so reads keep working.
     tenant_id: Optional[str] = None
     sub_tenant_id: Optional[str] = None

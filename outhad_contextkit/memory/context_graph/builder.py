@@ -78,7 +78,7 @@ class IncrementalGraphBuilder:
         self._last_by_run: Dict[Tuple[str, str], Tuple[str, datetime]] = {}
         # Remember doc refs so future memories can link back.
         self._doc_refs: Dict[str, List[str]] = {}
-        # Phase C — optional LLM edge synthesiser. Lives here (not in the
+        #  optional LLM edge synthesiser. Lives here (not in the
         # facade) because the facade owns storage, not inference.
         self._llm = llm
         self._llm_budget = llm_budget or LLMBudget(

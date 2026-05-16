@@ -1,4 +1,4 @@
-"""Phase F1 — MSPR config defaults and opt-in semantics.
+""" MSPR config defaults and opt-in semantics.
 
 MSPR must remain dormant until the operator flips ``mspr.enabled``.
 These tests pin the defaults so a regression in a sub-config cannot

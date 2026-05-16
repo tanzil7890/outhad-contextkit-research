@@ -1,4 +1,4 @@
-"""Phase 3 — ``Memory._cgl_on_*`` hook semantics (without booting Memory stack).
+""" ``Memory._cgl_on_*`` hook semantics (without booting Memory stack).
 
 These tests rebind the hook methods onto a bare object and exercise them with
 a real builder + backend. That confirms the hooks drive the CGL exactly as the

@@ -1,4 +1,4 @@
-"""Phase PT1 + PT2 + PT5 — graph-store throughput phases.
+"""Graph-store throughput phases.
 
 These tests stub out ``Neo4jGraph`` so no real Neo4j instance is
 required. They verify:

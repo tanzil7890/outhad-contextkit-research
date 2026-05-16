@@ -1,4 +1,4 @@
-"""Phase A6 — optional cross-encoder reranker.
+""" optional cross-encoder reranker.
 
 Two-stage retrieval is the industry standard for production RAG:
 1. **Bi-encoder** (CLIP / OpenAI / SigLIP) returns top-50 by cosine
