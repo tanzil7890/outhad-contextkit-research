@@ -1,0 +1,161 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+.installed.cfg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.python-version
+
+# Environment & secrets
+.env*
+!.env.example
+*.pem
+*.key
+secrets.json
+credentials.json
+service_account*.json
+
+# SQLite databases (generated at runtime)
+*.db
+*.sqlite
+*.sqlite3
+history.db
+feedback_events.db
+query_success.db
+changelog.db
+tenant_registry.db
+
+# Context Graph snapshots
+*.jsonl
+cgl.json
+cgl_snapshot*.json
+
+# Cold storage local cache
+cold_storage/
+cold_cache/
+.cold/
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Test artifacts & coverage
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.coveragerc
+.hypothesis/
+junit*.xml
+test-results/
+test_output/
+
+# Benchmark & evaluation outputs
+bench_results/
+eval_results/
+locomo_output/
+*.bench.json
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+.pyre/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+profile_default/
+ipython_config.py
+
+# Distribution / packaging
+.eggs/
+lib/
+lib64/
+*.manifest
+*.spec
+
+# Neo4j local data
+neo4j_data/
+neo4j/data/
+neo4j/logs/
+
+# Kafka local
+kafka-logs/
+zookeeper-data/
+
+# S3 / cloud local mirrors
+s3_mirror/
+.aws/
+
+# Embeddings cache
+embeddings_cache/
+.embed_cache/
+*.embed.npy
+*.embed.pkl
+
+# Model weights / large files
+*.bin
+*.pt
+*.ckpt
+*.safetensors
+*.h5
+
+# Temporary
+tmp/
+temp/
+.tmp/
+*.tmp
+*.bak
+*.orig
